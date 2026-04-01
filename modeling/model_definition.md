@@ -14,21 +14,20 @@ $d \in \{1, 2, \dots, 31\}$: The designated monthly repayment date.
 
 $s_t$: Disposable salary income at month $t$. (Pre-processed: modeled as a recursive step-function $s_t = s_{t-1} + \Delta s_t$ where $\Delta s_t$ is non-zero only during life events).
 
-$o_t$: Expected occasional one-off windfall income at month $t$. (Modeled as the expected value $\mathbb{E}[o_t]$ derived from probabilistic forecasts).
+$o_t$: Expected occasional one-off windfall income at month $t$.
 
 $q_t$: Official Cash Rate (OCR) at month $t$. (Pre-processed: extracted as the latest central bank rate immediately prior to $d$).
 
 $w_{k,t}$: The underlying wholesale base rate for product $k$ at month $t$.
 
--   For fixed terms $k \ge 12$: $w_{k,t}$ is the daily wholesale swap rate matching term $k$ months.
--   For the floating product ($k = 0$): The base rate is strictly the OCR, meaning $w_{0,t} = q_t$.
+-   For fixed terms $k \ge 12$: $w_{k,t}$ is the daily wholesale swap rate (or interpolated) matching term $k$ months.
 -   For the 6-month fixed product ($k = 6$): Modeled as a blend of the OCR and the 1-year swap rate, $w_{6,t} = \lambda q_t + (1 - \lambda) w_{12,t}$.
 
-$\lambda \in [0, 1]$: Empirical weighting parameter used to interpolate the 0.5-year wholesale base rate, derived from historical regression of 6-month rates against the OCR and 1-year swap rates.
+$\lambda \in[0, 1]$: Empirical weighting parameter used to interpolate the 0.5-year wholesale base rate, derived from historical regression of 6-month rates against the OCR and 1-year swap rates.
 
-$\hat{\mu}_{k,t}$: Predicted bank margin applied over the wholesale base rate for product $k$ at month $t$ (an additive percentage point spread, e.g., 0.02 for 200 bps). It is forecasted using historical data $r_{k,t}$ and $w_{k,t}$.
+$\hat{\mu}_{k,t}$: Predicted bank margin applied over the wholesale base rate for product $k$ at month $t$.
 
-$r_{k,t}$: Retail interest rate for product $k$ at month $t$, defined dynamically as $r_{k,t} = w_{k,t} + \hat{\mu}_{k,t}$. (Pre-processed: For historical periods, extracted directly from weekly market data; for future horizons, projected using this formula).
+$r_{k,t}$: Retail interest rate for product $k$ at month $t$, defined dynamically as $r_{k,t} = w_{k,t} + \hat{\mu}_{k,t}$. 
 
 $\alpha$: Penalty-free lump-sum threshold (percentage of principal).
 
@@ -48,15 +47,15 @@ $a_{i,t}$: Principal balance of sub-loan $i$ locked at the start of its current 
 
 ## State Variables (System Dynamics)
 
-$b_{i,t}$: Outstanding principal balance of sub-loan $i$ at the start of $t$.
+$b_{i,t} \ge 0$: Outstanding principal balance of sub-loan $i$ at the start of $t$.
 
-$c_t$: Zero-interest savings pool balance at the start of $t$.
+$c_t \ge 0$: Zero-interest savings pool balance at the start of $t$.
 
-$\rho_{i,t}$: Currently locked retail interest rate for sub-loan $i$.
+$\rho_{i,t}$: Locked retail interest rate for sub-loan $i$ at the start of $t$.
 
-$m_{i,t}$: Remaining scheduled life of sub-loan $i$ (months).
+$m_{i,t}$: Scheduled remaining life of sub-loan $i$ (months) at the start of $t$.
 
-$f_{i,t}$: Remaining duration on the fixed-rate contract for $i$ ($0$ if floating).
+$f_{i,t}$: Remaining duration on the fixed-rate contract for $i$ at the start of $t$ ($0$ if floating).
 
 $\omega_{i,t}$: Wholesale swap rate locked in at the start of the current fixed contract for $i$.
 
@@ -74,11 +73,13 @@ $p_{i,t} \ge 0$: New scheduled regular monthly payment for sub-loan $i$.
 
 $y_{i,t} \in \{0, 1\}$: Binary variable indicating if the contract for sub-loan $i$ is broken/restructured.
 
-$w_{i,t,k} \in \{0, 1\}$: Binary variable selecting rate product $k$ for sub-loan $i$ (if $y_{i,t} = 1$).
+$w_{i,t,k} \in \{0, 1\}$: Binary variable selecting rate product $k$ for sub-loan $i$.
 
 $v_{i,j,t} \ge 0$: Principal amount repartitioned from sub-loan $i$ to slot $j$.
 
-## Auxiliary Cost Variables
+$n_{i,t} \in \mathbb{Z}_{\ge 0}$: The new scheduled loan term (remaining life in months) chosen for sub-loan $i$ at month $t$ (applied if $y_{i,t} = 1$).
+
+## Auxiliary Variables
 
 $\iota_{i,t}$: Scheduled interest accrued.
 
@@ -102,13 +103,6 @@ $$
 
 # Constraints and Dynamics
 
-## Interest Accrual
-
-Interest is calculated monthly based on the locked retail rate.
-$$
-\iota_{i,t} = b_{i,t} \left( \frac{\rho_{i,t}}{12} \right)
-$$
-
 ## Savings Pool Cash Flow
 
 The pool funds all scheduled payments, lump sums, and penalties. It must not drop below zero. If income and current pool balances are insufficient to cover mandatory deductions, the slack variable $d_t$ provides the exact required shortfall to maintain feasibility.
@@ -120,171 +114,154 @@ $$
 c_t \ge 0 \quad \forall t
 $$
 
-$\mathbb{1}(t=0)$ acts as a Kronecker delta, equal to 1 only in the first period and 0 otherwise..
+## Sub-loan Principal and Interest Dynamics
 
-## Sub-loan Principal Dynamics
-
-Balances are updated by interest, payments, and any cross-slot repartitioning.
+Repartitioning out of slot $i$ is strictly bounded by its balance after lump-sum reductions to prevent drawing from an empty slot. Furthermore, any transfer of principal into or out of a sub-loan slot fundamentally alters the contract, strictly forcing a restructure on both the sending and receiving slots:
 $$
-b_{i,t+1} = b_{i,t} + \iota_{i,t} - p_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t})
+\sum_{j \neq i} v_{i,j,t} \le b_{i,t} - l_{i,t} \quad \forall i, t
 $$
 $$
-b_{i,t} \ge 0 \quad \forall i, t
+\sum_{j \neq i} v_{i,j,t} + \sum_{j \neq i} v_{j,i,t} \le M \cdot y_{i,t} \quad \forall i, t
 $$
 
-Principal repartitioning (transferring balance from slot $i$ to slot $j$) is only permitted if both the source and destination sub-loans are actively in a restructure state. Where $M$ is a sufficiently large Big-M constant:
+Interest is calculated monthly based strictly on the principal after immediate reductions and transfers, and the retail rate that takes effect for month $t$ (represented by state variable $\rho_{i,t+1}$):
 $$
-v_{i,j,t} \le M \cdot y_{i,t} \quad \forall i, j, t
+\iota_{i,t} = \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] \left( \frac{\rho_{i,t+1}}{12} \right)
+$$
+
+The outstanding balance transitions to the start of the next month. The scheduled payment is strictly bounded to prevent unbounded overpayment (which would artificially mine the savings pool):
+$$
+b_{i,t+1} = \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] + \iota_{i,t} - p_{i,t}
 $$
 $$
-v_{i,j,t} \le M \cdot y_{j,t} \quad \forall i, j, t
+b_{i,t+1} \ge 0 \quad \forall i, t
+$$
+$$
+p_{i,t} \le \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] + \iota_{i,t} \quad \forall i, t
 $$
 
 ## Rate and Fixed Term State Transitions
 
-The locked retail rate, wholesale rate, and remaining fixed duration evolve based on whether a contract is maintained ($y_{i,t} = 0$) or restructured ($y_{i,t} = 1$).
-
-For months where the loan is not restructured ($y_{i,t} = 0$):
+When a restructure occurs ($y_{i,t} = 1$), the model must select exactly one rate product $k$:
 $$
-\rho_{i,t+1} = \rho_{i,t}
+\sum_{k \in \mathcal{K}} w_{i,t,k} = y_{i,t} \quad \forall i, t
 $$
 
-$$
-\omega_{i,t+1} = \omega_{i,t}
-$$
+The new locked parameters for month $t$ immediately establish the states at $t+1$. Crucially, if the current fixed duration has expired ($f_{i,t} = 0$) and no restructure occurs, the retail rate automatically dynamically floats with the market rate $r_{0,t}$:
 
 $$
-f_{i,t+1} = \max(0, f_{i,t} - 1)
+\rho_{i,t+1} = y_{i,t} \sum_{k \in \mathcal{K}} w_{i,t,k} r_{k,t} + (1 - y_{i,t}) \left[ \mathbb{1}(f_{i,t} > 0)\rho_{i,t} + \mathbb{1}(f_{i,t} = 0)r_{0,t} \right]
 $$
-
-For months where the loan is restructured ($y_{i,t} = 1$):
 $$
-\sum_{k \in \mathcal{K}} w_{i,t,k} = 1 \quad \forall i \text{ where } y_{i,t} = 1
+\omega_{i,t+1} = (1 - y_{i,t})\omega_{i,t} + y_{i,t} \sum_{k \in \mathcal{K}} w_{i,t,k} w_{k,t}
 $$
-
 $$
-\rho_{i,t+1} = \sum_{k \in \mathcal{K}} w_{i,t,k} r_{k,t}
+f_{i,t+1} = \max\left(0, (1 - y_{i,t})f_{i,t} + y_{i,t} \sum_{k \in \mathcal{K}} w_{i,t,k} \cdot k - 1\right)
 $$
-
 $$
-\omega_{i,t+1} = \sum_{k \in \mathcal{K}} w_{i,t,k} w_{k,t}
+u_{i,t+1} = (1 - y_{i,t})(u_{i,t} + 1) + y_{i,t}(1)
 $$
-
-$$
-f_{i,t+1} = \sum_{k \in \mathcal{K}} w_{i,t,k} k
-$$
-
-To enforce ANZ's "anniversary year" policies, we track the contract age $u_{i,t}$ in months.
-For months where the loan is not restructured ($y_{i,t} = 0$):
-$$
-u_{i,t+1} = u_{i,t} + 1
-$$
-For months where the loan is restructured ($y_{i,t} = 1$):
-$$
-u_{i,t+1} = 1
-$$
-Unused sub-loan slots (where no principal is allocated) simply maintain $b_{i,t} = 0$, implicitly enforcing the maximum loan split parameter $N$.
-
-
 
 ## Loan Term and Amortization Dynamics
 
-When a sub-loan contract is restructured or a new scheduled payment is established ($y_{i,t} = 1$), the new scheduled regular monthly payment $p_{i,t}$ must satisfy the standard loan amortization formula. Crucially, this must be calculated on the **effective principal balance** $\tilde{b}_{i,t}$, which accounts for any lump-sum reductions and cross-slot repartitioning executed in the current month.
-
-Let $\tilde{b}_{i,t}$ be the effective principal balance to be amortized:
-$$
-\tilde{b}_{i,t} = b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \quad \forall i \text{ where } y_{i,t} = 1
-$$
-
-The new scheduled monthly payment is defined as:
-$$
-p_{i,t} = \frac{\tilde{b}_{i,t} \left( \frac{\rho_{i,t}}{12} \right)}{1 - \left( 1 + \frac{\rho_{i,t}}{12} \right)^{-m_{i,t}}} \quad \forall i \text{ where } y_{i,t} = 1
-$$
-
-For months where the loan is not restructured and no new payment schedule is set ($y_{i,t} = 0$), the scheduled monthly payment remains constant, and the remaining scheduled life decrements by 1 month.
+To determine the minimum scheduled amortization payment $p^M_{i,t}$, we first define the **effective post-action principal** $\tilde{b}_{i,t}$ and the **effective scheduled term** $\tilde{m}_{i,t}$ active for month $t$:
 
 $$
-p_{i,t} = p_{i,t-1} \quad \forall i \text{ where } y_{i,t} = 0
+\tilde{b}_{i,t} = b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t})
 $$
 $$
-m_{i,t} = m_{i,t-1} - 1 \quad \forall i \text{ where } y_{i,t} = 0
+\tilde{m}_{i,t} = (1 - y_{i,t})m_{i,t} + y_{i,t} n_{i,t}
 $$
 
-Note: In an MINLP framework, the nonlinear amortization equality constraint above is usually modeled using Big-M formulations or by discretizing $m_{i,t}$ into integer years to manage the exponentiation. If $\tilde{b}_{i,t} = 0$ (an empty or fully paid-off sub-loan slot), the formula cleanly evaluates $p_{i,t} = 0$.
+Let $\tilde{r}_{i,t} = \frac{\rho_{i,t+1}}{12}$ represent the effective monthly retail interest rate. Assuming retail rates remain strictly positive due to bank margins ($\tilde{r}_{i,t} > 0$), the minimum mandatory payment strictly follows the standard amortizing annuity formula:
 
-## Penalty Mechanics (Soft Constraints Evaluated as Costs)
+$$
+p^M_{i,t} = \begin{cases} 
+\tilde{b}_{i,t} \cdot \left[ \frac{\tilde{r}_{i,t}}{1 - \left( 1 + \tilde{r}_{i,t} \right)^{-\tilde{m}_{i,t}}} \right] & \text{if } \tilde{m}_{i,t} > 0 \\ 
+\tilde{b}_{i,t} & \text{if } \tilde{m}_{i,t} = 0
+\end{cases} \quad \forall i
+$$
 
-Note: $\max()$, modulo operators, and indicator functions require Big-M linearization in standard MINLP.
+The borrower's chosen payment must meet or exceed this scheduled minimum. Additionally, the scheduled payment cannot be decreased from the previous month's value unless the contract is formally restructured, except when the sub-loan is naturally fully paid off:
+$$
+p_{i,t} \ge p^M_{i,t} \quad \forall i, t
+$$
+$$
+p_{i,t} \ge (1 - y_{i,t}) \cdot p_{i,t-1} \cdot \mathbb{1}(\tilde{b}_{i,t} > 0) \quad \forall i, t
+$$
 
-Let $r^W(f_{i,t}, t)$ be an auxiliary function that returns the wholesale swap rate at month $t$ (extracted prior to $d$) whose term exactly matches the remaining fixed duration $f_{i,t}$. (e.g., if 18 months remain, it fetches the 1.5-year swap rate).
+The remaining scheduled life of the sub-loan decays by exactly one month:
+$$
+m_{i,t+1} = \max\left(0, \tilde{m}_{i,t} - 1\right)
+$$
 
-Anniversary Accumulators: 
-
-According to bank policies, penalty-free thresholds reset on the anniversary of the contract start date.
+## Anniversary Accumulators
 
 If $y_{i,t} = 1$ OR $(u_{i,t} \bmod 12 = 0)$ (anniversary reset),
+
 $$
 A^L_{i,t} = 0, \quad A^P_{i,t} = 0, \quad a_{i,t} = b_{i,t}
 $$
+
 Otherwise ($y_{i,t} = 0$ and not an anniversary),
+
 $$
 A^L_{i,t} = A^L_{i,t-1} + l_{i,t-1}
 $$
 $$
-A^P_{i,t} = A^P_{i,t-1} + \Delta p_{i,t-1}
+A^P_{i,t} = A^P_{i,t-1} + (1 - y_{i,t-1}) \max(0, p_{i,t-1} - p_{i,t-2})
 $$
 $$
 a_{i,t} = a_{i,t-1}
 $$
 
-Contract break fee (triggered if $y_{i,t}=1$ and $f_{i,t}>0$):
-$$
-\epsilon^C_{i,t} = y_{i,t} \max\left(0, \omega_{i,t} - r^W(f_{i,t}, t)\right) \left( \frac{f_{i,t}}{12} \right) b_{i,t}
-$$
+## Penalties and Fees (Soft Constraints Evaluated as Costs)
 
-Excess lump-sum fee (Triggered only if the contract is maintained, applying to the marginal excess beyond the anniversary limit):
-$$
-\epsilon^L_{i,t} = (1 - y_{i,t}) \max\left(0, \omega_{i,t} - r^W(f_{i,t}, t)\right) \left( \frac{f_{i,t}}{12} \right) \max\left(0, l_{i,t} - \max\left(0, \alpha a_{i,t} - A^L_{i,t}\right)\right)
-$$
+Let the locked monthly wholesale rate be $r^{\omega}_{i,t} = \frac{\omega_{i,t}}{12}$, and the current market monthly wholesale rate be $r^{W}_{i,t} = \frac{r^W(f_{i,t}, t)}{12}$.
 
-Excess payment increase fee (Triggered only if the contract is maintained, applying the rate differential to the principal equivalent of the excess payment delta):
-$$
-\Delta p_{i,t} = \max(0, p_{i,t} - p_{i,t-1})
-$$
-$$
-\epsilon^P_{i,t} = (1 - y_{i,t}) \max\left(0, \omega_{i,t} - r^W(f_{i,t}, t)\right) \left( \frac{f_{i,t}}{12} \right) \left[ \max\left(0, \Delta p_{i,t} - \max\left(0, \beta - A^P_{i,t}\right)\right) \times f_{i,t} \right]
-$$
-
-Note: Because $p_{i,t}$ represents principal plus interest, multiplying the excess payment by the remaining fixed term $f_{i,t}$ acts as a simplified proxy for the present-value principal delta. This avoids introducing a complex, non-linear discount-rate formulation into the MINLP.
-
-Flat restructure fee (Applies when a restructure occurs, or when the *marginal* action pushes the current anniversary accumulation over the thresholds):
-$$
-\psi_{i,t} = \phi \cdot \mathbb{1}\Bigg( y_{i,t} = 1 \;\lor\; \Big(l_{i,t} > \max\big(0, \alpha b_{i,t} - A^L_{i,t}\big)\Big) \;\lor\; \Big(\Delta p_{i,t} > \max\big(0, \beta - A^P_{i,t}\big)\Big) \Bigg)
-$$
-
-Cashback claw back penalty (Triggered if the total loan is fully repaid before the claw back period $\tau$ expires):
-
-Let $B_t = \sum_{i \in \mathcal{N}} b_{i,t}$ be the total outstanding principal at month $t$. 
-
-Let $Z_t \in \{0, 1\}$ be an indicator variable that triggers exactly when the total principal drops to zero:
+To calculate the bank's true Early Repayment Recovery (ERR) in alignment with the New Zealand CCCFA "safe harbor" methodology, we evaluate the Exact Present Value (PV) loss. We define the PV Annuity Discounting Factor $D_{i,t}$ over the remaining fixed term:
 
 $$
-Z_t = \mathbb{1}(B_{t-1} > 0 \;\land\; B_t = 0)
+D_{i,t} = \mathbb{1}(f_{i,t} > 0) \left[ \frac{1 - (1 + r^{W}_{i,t})^{-f_{i,t}}}{r^{W}_{i,t}} \right]
+$$
+Note: In MINLP solver, handle the limit case where $r^{W}_{i,t} = 0$ by setting $D_{i,t} = f_{i,t}$ to prevent zero-division errors.
+
+Contract Break Fee (Triggered if $y_{i,t}=1$ and $f_{i,t}>0$):
+
+The penalized principal is the remaining balance minus any unused penalty-free allowance.
+$$
+\epsilon^C_{i,t} = y_{i,t} \cdot \max\left(0, r^{\omega}_{i,t} - r^{W}_{i,t}\right) \cdot D_{i,t} \cdot \max\Big(0, b_{i,t} - \max(0, \alpha a_{i,t} - A^L_{i,t})\Big)
 $$
 
-The claw back penalty applies the original cashback amount multiplied by a factor depending on the policy toggle $\theta$ ($0$ for full claw back, $1$ for pro-rata):
+Excess Lump-Sum Fee (Triggered only if the contract is maintained):
+
+The penalized principal is the marginal excess lump-sum beyond the anniversary limit.
 $$
-\kappa_t = Z_t \cdot \mathbb{1}(t \le \tau) \cdot \left( \gamma \sum_{i \in \mathcal{N}} b_{i,0} \right) \cdot \left[ (1 - \theta) + \theta \left( \frac{\tau - t}{\tau} \right) \right]
+\epsilon^L_{i,t} = (1 - y_{i,t}) \cdot \max\left(0, r^{\omega}_{i,t} - r^{W}_{i,t}\right) \cdot D_{i,t} \cdot \max\left(0, l_{i,t} - \max\left(0, \alpha a_{i,t} - A^L_{i,t}\right)\right)
 $$
 
-Note: Big-M constraints or logical indicator constraints will be needed to linearize the conditions for $Z_t$ and the time boundary $\mathbb{1}(t \le \tau)$ in standard MINLP.
+Standard Present Value of an Annuity formula applied to the difference in payment streams).
+
+Excess Payment Increase Fee (Triggered only if the contract is maintained): 
+$$
+\Delta p_{i,t} = (1 - y_{i,t}) \max(0, p_{i,t} - p_{i,t-1})
+$$
+$$
+\Delta p^{E}_{i,t} = \max\left(0, \Delta p_{i,t} - \max\left(0, \beta - A^P_{i,t}\right)\right)
+$$
+$$
+\epsilon^P_{i,t} = (1 - y_{i,t}) \cdot \mathbb{1}(f_{i,t} > 0) \cdot \max\left(0, \Delta p^{E}_{i,t} \cdot \left[ \frac{1 - (1 + r^{W}_{i,t})^{-f_{i,t}}}{r^{W}_{i,t}} - \frac{1 - (1 + r^{\omega}_{i,t})^{-f_{i,t}}}{r^{\omega}_{i,t}} \right] \right)
+$$
+
+Flat Restructure Fee:
+$$
+\psi_{i,t} = \phi \cdot \mathbb{1}\Bigg( y_{i,t} = 1 \;\lor\; \Big(l_{i,t} > \max\big(0, \alpha a_{i,t} - A^L_{i,t}\big)\Big) \;\lor\; \Big(f_{i,t} > 0 \land \Delta p_{i,t} > \max\big(0, \beta - A^P_{i,t}\big)\Big) \Bigg)
+$$
 
 # Suggested Methodology
 
 ## Rolling Horizon MINLP (Model Predictive Control)
-
 Formulate the expressions above into a deterministic Mixed-Integer Nonlinear Program. Due to the $\max()$ operators and binary indicators ($\mathbb{1}$), reformulate these using Big-M constraints. Solve over a prediction horizon (e.g., $T=60$ months to reduce computational load, assuming a terminal state value) using a solver like SCIP. Execute only the actions for month $t$, then advance the horizon when new rate data ($r_{k,t}, w_{k,t}$) arrives.
 
 ## Markov Decision Process (MDP) / Proximal Policy Optimization (PPO)
-
-If computation time for the MINLP becomes prohibitive under Monte Carlo rate simulations, convert the dynamics into a simulation environment. The objective formulation above becomes the negative Reward function. Train a Reinforcement Learning agent using PPO to output continuous actions ($l_{i,t}, p_{i,t}, v_{i,j,t}$) and discrete actions ($y_{i,t}, w_{i,t,k}$). Use action-masking to strictly satisfy hard bounds like $c_t \ge 0$ and $b_{i,t} \ge 0$.
+If computation time for the MINLP becomes prohibitive under Monte Carlo rate simulations, convert the dynamics into a simulation environment. The objective formulation above becomes the negative Reward function. Train a Reinforcement Learning agent using PPO to output continuous actions ($l_{i,t}, p_{i,t}, v_{i,j,t}$) and discrete actions ($y_{i,t}, w_{i,t,k}$). Use action-masking to strictly satisfy hard bounds like $c_t \ge 0$ and limits on principal payouts.
