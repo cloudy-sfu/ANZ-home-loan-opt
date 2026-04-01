@@ -1,7 +1,10 @@
 # Ref: Translated from wholesale_swap_rate.py targeting https://www.interest.co.nz
 include("get_interest.jl")
 using .GetInterest
-using DataFrames, Dates, Arrow
+using DataFrames
+using Dates
+using Arrow
+using Serialization
 
 # Collect data.
 chart_id, series_names_raw = get_chart_and_series(
@@ -94,4 +97,4 @@ for (k, sym) in enumerate(term_syms)
     result[!, sym] = swap_rate_filled[:, k]
 end
 
-Arrow.write("raw/wholesale_swap_rate.arrow", result)
+serialize("raw/wholesale_swap_rate.jls", result)

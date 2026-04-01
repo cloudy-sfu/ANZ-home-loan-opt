@@ -1,7 +1,10 @@
 # Ref: Translated from mortgage_rate.py targeting https://www.interest.co.nz
 include("get_interest.jl")
 using .GetInterest
-using DataFrames, Dates, Arrow, Interpolations
+using Serialization
+using DataFrames
+using Dates
+using Interpolations
 
 # Collect data.
 chart_id, series_names_raw = get_chart_and_series(
@@ -104,4 +107,4 @@ for (k, sym) in enumerate(term_syms)
     result[!, sym] = mortgage_filled[:, k]
 end
 
-Arrow.write("raw/mortgage_rate.arrow", result)
+serialize("raw/mortgage_rate.jls", result)

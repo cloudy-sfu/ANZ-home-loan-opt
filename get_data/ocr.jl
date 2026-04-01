@@ -1,7 +1,9 @@
 # Ref: Translated from ocr.py targeting https://www.interest.co.nz
 include("get_interest.jl")
 using .GetInterest
-using DataFrames, Dates, Arrow
+using DataFrames
+using Dates
+using Serialization
 
 chart_id, series_names = get_chart_and_series(
     "https://www.interest.co.nz/charts/interest-rates/ocr"
@@ -16,4 +18,4 @@ sort!(ocr, :date)
 changed = [true; [ocr.value[i] != ocr.value[i-1] for i in 2:nrow(ocr)]]
 ocr_1 = ocr[changed, :]
 
-Arrow.write("raw/official_cash_rate.arrow", ocr_1)
+serialize("raw/official_cash_rate.jls", ocr_1)
