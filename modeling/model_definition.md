@@ -37,13 +37,17 @@ $\phi$: Flat restructure/administration transaction fee.
 
 $\gamma$: Cashback incentive percentage (percentage of initial total loan amount).
 
-$\tau$: Cashback claw back period (months).
+$\tau$: Cashback clawback period (months).
 
-$\theta \in \{0, 1\}$: Claw back policy toggle ($0$ for full claw back, $1$ for pro-rata claw back).
+$\theta \in \{0, 1\}$: Clawback policy toggle ($0$ for full clawback, $1$ for pro-rata clawback).
 
 $d_t \ge 0$: Emergency cash shortfall (slack variable) injected at month $t$ to prevent model infeasibility when disposable salary ($s_t$) is heavily negative.
 
 $a_{i,t}$: Principal balance of sub-loan $i$ locked at the start of its current anniversary year.
+
+$T \in \mathbb{Z}_{>0}$: The length of the rolling prediction horizon in months (e.g., $T=60$). The evaluation horizon $\mathcal{T}$ spans from $t=0$ to $t=T-1$.
+
+$\zeta \in (0, 1)$: Amortization interest discount factor. Because principal decays over time in an amortizing loan, the total future interest is not simply $\text{Balance} \times \text{Rate} \times \text{Years}$. The remaining balance curve bows outward. Mathematically, a linear decay would have an area under the curve of $0.5$. For standard amortizing loans, $\zeta \approx 0.55$ to $0.60$ is a highly accurate proxy for the true area under the interest decay curve.
 
 ## State Variables (System Dynamics)
 
@@ -71,13 +75,13 @@ $l_{i,t} \ge 0$: Lump-sum principal reduction applied to sub-loan $i$.
 
 $p_{i,t} \ge 0$: New scheduled regular monthly payment for sub-loan $i$.
 
-$y_{i,t} \in \{0, 1\}$: Binary variable indicating if the contract for sub-loan $i$ is broken/restructured.
-
 $w_{i,t,k} \in \{0, 1\}$: Binary variable selecting rate product $k$ for sub-loan $i$.
 
-$v_{i,j,t} \ge 0$: Principal amount repartitioned from sub-loan $i$ to slot $j$.
+$\Delta v_{i,t} \in \mathbb{R}$: Net principal repartitioned into (positive) or out of (negative) sub-loan $i$.
 
 $n_{i,t} \in \mathbb{Z}_{\ge 0}$: The new scheduled loan term (remaining life in months) chosen for sub-loan $i$ at month $t$ (applied if $y_{i,t} = 1$).
+
+$z_{i,t} \in \{0, 1\}$: Binary variable equal to $1$ if the scheduled loan term for sub-loan $i$ is restructured at month $t$ without changing the current rate product.
 
 ## Auxiliary Variables
 
@@ -91,18 +95,32 @@ $\epsilon^P_{i,t}$: Early repayment penalty from excess payment increases.
 
 $\psi_{i,t}$: Flat restructure fees triggered.
 
-$\kappa_t$: Cashback claw back penalty.
+$\kappa_t$: Cashback clawback penalty.
 
-$z_t \in \{0, 1\}$: Binary indicator equal to $1$ if the *entire* loan is fully paid off exactly at month $t$.
+$x_t \in \{0, 1\}$: Binary state indicator equal to $1$ if the *entire* loan balance is zero at month $t$ (Level Trigger).
+
+$C_{i,t} \in \{0, 1\}$: Binary state indicator equal to $1$ if the specific sub-loan $i$ drops to a zero balance at month $t$.
 
 $h_{i,t} \in \{0, 1\}$: Binary indicator equal to $1$ if a flat fee is triggered for sub-loan $i$ at month $t$ (due to a contract break, excess lump-sum, or excess payment increase).
 
+$y_{i,t} \in \{0, 1\}$: Indicating if a contract is restructured, defined as 
+$$
+y_{i,t} = \sum_{k \in \mathcal{K}} w_{i,t,k}
+$$
+
 # Objective Function
 
-The objective is to minimize total financial friction (interest plus all penalties, fees, and severe penalties for cash shortfalls) over the loan lifetime. Let $\Omega$ be a sufficiently large penalty weight for forced debt:
+The objective is to minimize total financial friction (interest plus all penalties, fees, and severe penalties for cash shortfalls) over the loan lifetime.
 
+Let $\Omega$ be a sufficiently large penalty weight for forced debt.
+
+Let $T$ be the final time step of the rolling prediction horizon.
 $$
-\min \sum_{t \in \mathcal{T}} \left( \Omega \cdot d_t + \kappa_t + \sum_{i \in \mathcal{N}} \left[ \iota_{i,t} + \epsilon^C_{i,t} + \epsilon^L_{i,t} + \epsilon^P_{i,t} + \psi_{i,t} \right] \right)
+\min \sum_{t=0}^{T-1} \left( \Omega \cdot d_t + \kappa_t + \sum_{i \in \mathcal{N}} \left[ \iota_{i,t} + \epsilon^C_{i,t} + \epsilon^L_{i,t} + \epsilon^P_{i,t} + \psi_{i,t} \right] \right) + \sum_{i \in \mathcal{N}} \mathcal{V}_{i,T}
+$$
+where the terminal future interest proxy $\mathcal{V}_{i,T}$ is defined as:
+$$
+\mathcal{V}_{i,T} = b_{i,T} \cdot \rho_{i,T} \cdot \left( \frac{m_{i,T}}{12} \right) \cdot \zeta
 $$
 
 # Constraints and Dynamics
@@ -119,41 +137,48 @@ $$
 c_t \ge 0 \quad \forall t
 $$
 
-To detect the exact month $t$ where the total balance hits zero (triggering the penalty only once), evaluate the effective post-action principal across all slots:
+To detect the exact month $t$ where the total balance hits zero and trigger the penalty exactly once, we define the binary cleared state $x_t$. 
+
+The state $x_t$ evaluates the effective post-action principal across all slots:
 
 $$
-\sum_{i \in \mathcal{N}} \tilde{b}_{i,t} \le M \cdot (1 - z_t)
+x_t = 1 \implies \sum_{i \in \mathcal{N}} b_{i,t+1} \le 0
 $$
 
 $$
-\sum_{i \in \mathcal{N}} \tilde{b}_{i,t-1} \ge \varepsilon \cdot z_t
+x_t = 0 \implies \sum_{i \in \mathcal{N}} b_{i,t+1} \ge 0.01
 $$
 
+Note: 0.01 means absolute value $0.01 (one cent). If principal value is scaled to 1K, this value should be adjusted correspondingly.
+
+Because the model does not allow redrawing closed debt, the cleared state is monotonically non-decreasing. To ensure solver stability:
 $$
-\kappa_t = z_t \cdot \mathbb{1}(t < \tau) \cdot \left( \gamma \sum_{i \in \mathcal{N}} b_{i,0} \right) \cdot \left[ (1 - \theta) + \theta \left( \frac{\tau - t}{\tau} \right) \right]
+x_t \ge x_{t-1} \quad \forall t
 $$
 
-Note: $M$ is a sufficiently large Big-M scalar, and $\varepsilon$ is a tiny positive scalar.
-
+We calculate the clawback penalty exactly on the transition month by evaluating the edge directly (for $t=0$, assume $x_{-1} = 0$):
+$$
+\kappa_t = (x_t - x_{t-1}) \cdot \mathbb{1}(t < \tau) \cdot \left( \gamma \sum_{i \in \mathcal{N}} b_{i,0} \right) \cdot \left[ (1 - \theta) + \theta \left( \frac{\tau - t}{\tau} \right) \right]
+$$
 ## Sub-loan Principal and Interest Dynamics
 
-Repartitioning out of slot $i$ is strictly bounded by its balance after lump-sum reductions to prevent drawing from an empty slot. Furthermore, any transfer of principal into or out of a sub-loan slot fundamentally alters the contract, strictly forcing a restructure on both the sending and receiving slots:
+Conservation of total debt requires that net transfers sum to zero. 
 $$
-\sum_{j \neq i} v_{i,j,t} \le b_{i,t} - l_{i,t} \quad \forall i, t
-$$
-
-$$
-\sum_{j \neq i} v_{i,j,t} + \sum_{j \neq i} v_{j,i,t} \le M \cdot y_{i,t} \quad \forall i, t
+\sum_{i \in \mathcal{N}} \Delta v_{i,t} = 0 \quad \forall t
 $$
 
+Furthermore, a transfer strictly forces a restructure on any slot where the net change is non-zero:
+$$
+y_{i,t} = 0 \implies \Delta v_{i,t} = 0
+$$
 Interest is calculated monthly based strictly on the principal after immediate reductions and transfers, and the retail rate that takes effect for month $t$ (represented by state variable $\rho_{i,t+1}$):
 $$
-\iota_{i,t} = \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] \left( \frac{\rho_{i,t+1}}{12} \right)
+\iota_{i,t} = \left[ b_{i,t} - l_{i,t} + \Delta v_{i,t} \right] \left( \frac{\rho_{i,t}}{12} \right)
 $$
 
 The outstanding balance transitions to the start of the next month. The scheduled payment is strictly bounded to prevent unbounded overpayment (which would artificially mine the savings pool):
 $$
-b_{i,t+1} = \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] + \iota_{i,t} - p_{i,t}
+b_{i,t+1} = \left[ b_{i,t} - l_{i,t} + \Delta v_{i,t} \right] + \iota_{i,t} - p_{i,t}
 $$
 
 $$
@@ -161,15 +186,10 @@ b_{i,t+1} \ge 0 \quad \forall i, t
 $$
 
 $$
-p_{i,t} \le \left[ b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t}) \right] + \iota_{i,t} \quad \forall i, t
+p_{i,t} \le \left[ b_{i,t} - l_{i,t} + \Delta v_{i,t} \right] + \iota_{i,t} \quad \forall i, t
 $$
 
 ## Rate and Fixed Term State Transitions
-
-When a restructure occurs ($y_{i,t} = 1$), the model must select exactly one rate product $k$:
-$$
-\sum_{k \in \mathcal{K}} w_{i,t,k} = y_{i,t} \quad \forall i, t
-$$
 
 The new locked parameters for month $t$ immediately establish the states at $t+1$. Crucially, if the current fixed duration has expired ($f_{i,t} = 0$) and no restructure occurs, the retail rate automatically dynamically floats with the market rate $r_{0,t}$:
 
@@ -182,8 +202,10 @@ $$
 $$
 
 $$
-f_{i,t+1} = \max\left(0, (1 - y_{i,t})f_{i,t} + y_{i,t} \sum_{k \in \mathcal{K}} w_{i,t,k} \cdot k - 1\right)
+f_{i,t+1} = \max\left(0, (1 - y_{i,t}) f_{i,t} + \sum_{k \in \mathcal{K}} w_{i,t,k} \cdot k - 1\right)
 $$
+
+Note: $w_{i,t,k}$ is a binary choice of a rate product. If no restructure happens, all $w_{i,t,k} = 0$; if restructure happens, $1 - y_{i,t} = 0$. Therefore, the sum evaluates to 0 on its own, and do not need to multiply the entire sum by $y_{i,t}$ again.
 
 $$
 u_{i,t+1} = (1 - y_{i,t})(u_{i,t} + 1) + y_{i,t}(1)
@@ -191,14 +213,17 @@ $$
 
 ## Loan Term and Amortization Dynamics
 
-To determine the minimum scheduled amortization payment $p^M_{i,t}$, we first define the **effective post-action principal** $\tilde{b}_{i,t}$ and the **effective scheduled term** $\tilde{m}_{i,t}$ active for month $t$:
+A contract cannot undergo a pure term adjustment and a rate switch simultaneously:
+$$
+y_{i,t} + z_{i,t} \le 1 \quad \forall i, t
+$$
+To determine the minimum scheduled amortization payment $p^M_{i,t}$, we first define the effective post-action principal $\tilde{b}_{i,t}$ and the effective scheduled term $\tilde{m}_{i,t}$ active for month $t$:
+$$
+\tilde{b}_{i,t} = b_{i,t} - l_{i,t} + \Delta v_{i,t}
+$$
 
 $$
-\tilde{b}_{i,t} = b_{i,t} - l_{i,t} + \sum_{j \neq i} (v_{j,i,t} - v_{i,j,t})
-$$
-
-$$
-\tilde{m}_{i,t} = (1 - y_{i,t})m_{i,t} + y_{i,t} n_{i,t}
+\tilde{m}_{i,t} = (1 - y_{i,t} - z_{i,t})m_{i,t} + (y_{i,t} + z_{i,t}) n_{i,t}
 $$
 
 Let $\tilde{r}_{i,t} = \frac{\rho_{i,t+1}}{12}$ represent the effective monthly retail interest rate. Assuming retail rates remain strictly positive due to bank margins ($\tilde{r}_{i,t} > 0$), the minimum mandatory payment strictly follows the standard amortizing annuity formula:
@@ -210,13 +235,17 @@ p^M_{i,t} = \begin{cases}
 \end{cases} \quad \forall i
 $$
 
-The borrower's chosen payment must meet or exceed this scheduled minimum. Additionally, the scheduled payment cannot be decreased from the previous month's value unless the contract is formally restructured, except when the sub-loan is naturally fully paid off:
+The borrower's chosen payment must meet or exceed this scheduled minimum:
 $$
 p_{i,t} \ge p^M_{i,t} \quad \forall i, t
 $$
 
+The scheduled payment cannot be decreased from the previous month's value unless the contract is formally restructured, OR the sub-loan is naturally clearing to zero. We define $C_{i,t} \in \{0, 1\}$ to disable the lower bound during the final clearing month:
 $$
-p_{i,t} \ge (1 - y_{i,t}) \cdot p_{i,t-1} \cdot \mathbb{1}(\tilde{b}_{i,t} > 0) \quad \forall i, t
+C_{i,t} = 1 \implies \tilde{b}_{i,t} + \iota_{i,t} - p_{i,t} \le 0
+$$
+$$
+C_{i,t} = 0 \implies p_{i,t} \ge (1 - y_{i,t} - z_{i,t}) \cdot p_{i,t-1}
 $$
 
 The remaining scheduled life of the sub-loan decays by exactly one month:
@@ -259,18 +288,12 @@ $$
 
 Flat Restructure / Administration Fee:
 
-Triggered whenever a contract is formally restructured/broken ($y_{i,t} = 1$), OR when an excess lump-sum fee is triggered ($\epsilon^L_{i,t} > 0$), OR when an excess payment increase fee is triggered ($\epsilon^P_{i,t} > 0$).
-We define the fee trigger $h_{i,t}$ using Big-M bounding:
+Triggered whenever a contract is formally restructured/broken ($y_{i,t} = 1$), OR a pure term adjustment occurs ($z_{i,t} = 1$), OR when an excess lump-sum fee is triggered ($\epsilon^L_{i,t} > 0$), OR when an excess payment increase fee is triggered ($\epsilon^P_{i,t} > 0$).
 $$
-h_{i,t} \ge y_{i,t}
-$$
-
-$$
-h_{i,t} \ge \frac{\epsilon^L_{i,t}}{M}
-$$
-
-$$
-h_{i,t} \ge \frac{\epsilon^P_{i,t}}{M}
+h_{i,t} = 0 \implies y_{i,t} = 0 \\
+h_{i,t} = 0 \implies z_{i,t} = 0 \\
+h_{i,t} = 0 \implies \epsilon^L_{i,t} \le 0 \\
+h_{i,t} = 0 \implies \epsilon^P_{i,t} \le 0
 $$
 
 The flat fee evaluated as a cost is then:
@@ -297,7 +320,7 @@ $$
 \epsilon^L_{i,t} = (1 - y_{i,t}) \cdot \max\left(0, r^L_{i,t} - r^M_{i,t}\right) \cdot D_{i,t} \cdot \max\left(0, l_{i,t} - \max\left(0, \alpha a_{i,t} - A^L_{i,t}\right)\right)
 $$
 
-Excess Payment Increase Fee (Triggered only if the contract is maintained): 
+Excess Payment Increase Fee (Triggered only if the contract is maintained):
 
 Standard Present Value of an Annuity formula applied to the difference in payment streams.
 $$
@@ -314,9 +337,13 @@ $$
 
 # Suggested Methodology
 
+## Term Discretization via Binary Expansion (SOS1)
+
+To prevent the highly non-convex formulation of having a decision variable in the exponent of the amortization formula $(1 + \tilde{r}_{i,t})^{-\tilde{m}_{i,t}}$, the model must discretize the allowable restructure loan terms. Define a finite set of allowable terms $\mathcal{D} = \{60, 120, 180, 240, 300, 360\}$ (in months). Introduce a Special Ordered Set of Type 1 (SOS1) binary variable $\chi_{i,t,d} \in \{0, 1\}$ representing the selection of term $d \in \mathcal{D}$ for sub-loan $i$ at time $t$. Enforce exactly one selection during a restructure (rate break or term adjustment): $ \sum_{d \in \mathcal{D}} \chi_{i,t,d} = y_{i,t} + z_{i,t} $ The new scheduled term is strictly a linear combination: $n_{i,t} = \sum_{d \in \mathcal{D}} \chi_{i,t,d} \cdot d$​ The non-linear exponentiation can then be replaced by a pre-computed parameter lookup, fully linearizing the term selection and restoring Mixed-Integer formulation tractability for branch-and-cut solvers.
+
 ## Rolling Horizon MINLP (Model Predictive Control)
 
-Formulate the expressions above into a deterministic Mixed-Integer Nonlinear Program. Due to the $\max()$ operators and binary indicators ($\mathbb{1}$), reformulate these using Big-M constraints. Solve over a prediction horizon (e.g., $T=60$ months to reduce computational load, assuming a terminal state value) using a solver like SCIP. Execute only the actions for month $t$, then advance the horizon when new rate data ($r_{k,t}, w_{k,t}$) arrives.
+Formulate the expressions above into a deterministic Mixed-Integer Nonlinear Program. Solve over a prediction horizon (e.g., $T=60$ months to reduce computational load, assuming a terminal state value) using a solver like SCIP. Execute only the actions for month $t$, then advance the horizon when new rate data ($r_{k,t}, w_{k,t}$) arrives.
 
 ## Markov Decision Process (MDP) / Proximal Policy Optimization (PPO)
 
