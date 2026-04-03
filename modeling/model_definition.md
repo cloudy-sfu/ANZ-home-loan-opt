@@ -10,7 +10,7 @@ $k \in \mathcal{K}$: Available rate product terms in **months** (e.g., $\mathcal
 
 ## Parameters (Given & Projected Data)
 
-$d \in \{1, 2, \dots, 31\}$: The designated monthly repayment date. 
+$d \in \{1, 2, \dots, 31\}$: The designated monthly repayment date.
 
 $s_t$: Disposable salary income at month $t$. (Pre-processed: modeled as a recursive step-function $s_t = s_{t-1} + \Delta s_t$ where $\Delta s_t$ is non-zero only during life events.)
 
@@ -31,7 +31,7 @@ $r_{k,t}$: Retail interest rate for product $k$ at month $t$, defined dynamicall
 
 $\alpha$: Penalty-free lump-sum threshold (percentage of principal).
 
-$\beta$: Penalty-free payment increase threshold (absolute monetary amount per payment period). The bank's policy defines this limit in its native payment frequency (e.g., $250 per week for ANZ NZ). When the model's time step differs from the policy's native frequency, $\beta$ must be converted accordingly.
+$\beta$: Penalty-free payment increase threshold (absolute monetary amount per payment period). The bank's policy defines this limit in its native payment frequency. When the model's time step differs from the policy's native frequency, $\beta$ must be converted accordingly.
 
 $\phi$: Flat restructure/administration transaction fee.
 
@@ -41,7 +41,7 @@ $\tau$: Cashback clawback period (months).
 
 $\theta \in \{0, 1\}$: Clawback policy toggle ($0$ for full clawback, $1$ for pro-rata clawback).
 
-$T \in \mathbb{Z}_{>0}$: The length of the rolling prediction horizon in months (e.g., $T=60$). The evaluation horizon $\mathcal{T}$ spans from $t=0$ to $t=T-1$.
+$T \in \mathbb{Z}_{>0}$: The length of the rolling prediction horizon in months (e.g., $T=60$). The evaluation horizon $\mathcal{T}$ spans from $t=1$ to $t=T$.
 
 $\zeta \in (0, 1)$: Amortization interest discount factor. Because principal decays over time in an amortizing loan, the total future interest is not simply $\text{Balance} \times \text{Rate} \times \text{Years}$. The remaining balance curve bows outward. Mathematically, a linear decay would have an area under the curve of $0.5$. For standard amortizing loans, $\zeta \approx 0.55$ to $0.60$ is a highly accurate proxy for the true area under the interest decay curve.
 
@@ -50,7 +50,7 @@ $\zeta \in (0, 1)$: Amortization interest discount factor. Because principal dec
 | Symbol                           | Description                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
 | $b_{i,0} \ge 0$                  | Initial outstanding principal of sub-loan $i$. Must satisfy $\sum_{i} b_{i,0} > 0$ (non-trivial loan). |
-| $c_0 \ge 0$                      | Initial savings pool balance.                                |
+| $c_0 \ge 0$                      | Initial savings pool balance. Typically $s_0$ user-supplied externally (last month's salary before lending). |
 | $\rho_{i,0} > 0$                 | Initial locked retail interest rate for sub-loan $i$. For floating slots, set $\rho_{i,0} = r_{0,0}$. |
 | $m_{i,0} \in \mathbb{Z}_{\ge 0}$   | Initial remaining scheduled loan life (months) for sub-loan $i$. Set to $0$ for inactive (empty) slots. |
 | $f_{i,0} \in \mathbb{Z}_{\ge 0}$ | Initial remaining fixed-rate contract duration (months). $0$ if floating. |
@@ -59,8 +59,8 @@ $\zeta \in (0, 1)$: Amortization interest discount factor. Because principal dec
 | $A^L_{i,0} \ge 0$                | Accumulated penalty-free lump sums in the current anniversary year at inception. |
 | $A^P_{i,0} \in \{0, 1\}$ | Whether the one-time payment increase allowance has already been consumed in the current anniversary year at inception. |
 | $a_{i,0} \ge 0$                  | Principal locked at the start of the current anniversary year. Typically $a_{i,0} = b_{i,0}$ if the model starts at a contract anniversary; otherwise the historical value. |
-| $p_{i,-1} \ge 0$                 | The scheduled payment in the month immediately preceding the optimization horizon. Required by the payment non-decrease constraint at $t = 0$: $C_{i,0} = 0 \implies p_{i,0} \ge (1 - y_{i,0} - z_{i,0}) \cdot p_{i,-1}$. |
-| $x_{-1} = 0$                     | Sentinel: the loan was not fully repaid before the horizon. Required by the clawback edge-detection formula $\kappa_0 = (x_0 - x_{-1}) \cdot (\dots)$. |
+| $p_{i,0} \ge 0$                | The scheduled payment in the month immediately preceding the optimization horizon. Required by the payment non-decrease constraint at $t = 1$: $C_{i,1} = 0 \implies p_{i,1} \ge (1 - y_{i,1} - z_{i,1}) \cdot p_{i,0}$. |
+| $x_0 = 0$                     | Sentinel: the loan was not fully repaid before the horizon. Required by the clawback edge-detection formula $\kappa_1 = (x_1 - x_0) \cdot (\dots)$. |
 
 ## State Variables (System Dynamics)
 
@@ -147,7 +147,9 @@ $$
 The pool funds all scheduled payments, lump sums, and penalties. It must not drop below zero. If income and current pool balances are insufficient to cover mandatory deductions, the slack variable $\eta_t$ provides the exact required shortfall to maintain feasibility.
 
 $$
-c_{t+1} = c_t + s_t + o_t + \eta_t + \mathbb{1}(t=0) \left( \gamma \sum_{i \in \mathcal{N}} b_{i,0} \right) - \kappa_t - \sum_{i \in \mathcal{N}} \left( p_{i,t} + l_{i,t} + \epsilon^C_{i,t} + \epsilon^L_{i,t} + \epsilon^P_{i,t} + \psi_{i,t} \right)
+c_0 = s_0 + \gamma \sum_i b_{i,0} \\
+
+c_t = c_{t-1} + s_t + o_t + \eta_t - \kappa_t - \sum_{i \in \mathcal{N}}\!\left(p_{i,t} + l_{i,t} + \epsilon^C_{i,t} + \epsilon^L_{i,t} + \epsilon^P_{i,t} + \psi_{i,t}\right) \quad \forall\, t \in \{1, \dots, T\}
 $$
 
 $$
@@ -175,7 +177,7 @@ $$
 
 We calculate the clawback penalty exactly on the transition month by evaluating the edge directly (for $t=0$, assume $x_{-1} = 0$):
 $$
-\kappa_t = (x_t - x_{t-1}) \cdot \mathbb{1}(t < \tau) \cdot \left( \gamma \sum_{i \in \mathcal{N}} b_{i,0} \right) \cdot \left[ (1 - \theta) + \theta \left( \frac{\tau - t}{\tau} \right) \right]
+\kappa_t = (x_t - x_{t-1}) \cdot \mathbb{1}(t < \tau) \cdot \gamma \sum_{i \in \mathcal{N}} b_{i,0}  \cdot \left[ (1 - \theta) + \theta \left( \frac{\tau - t}{\tau} \right) \right]
 $$
 ## Sub-loan Principal and Interest Dynamics
 
