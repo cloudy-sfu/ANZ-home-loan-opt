@@ -28,6 +28,16 @@ To evaluate bank policies without hardcoding specific numbers, the following mut
 
 The system manages two primary balances: the outstanding loan principal and a zero-interest savings pool. Each month, the disposable salary income, any occasional one-off income, and any bank cashback incentives are deposited into the savings pool. The scheduled mortgage payment is deducted from this pool. Because the savings pool accrues zero interest, holding cash there is mathematically inefficient compared to reducing the loan principal. However, the borrower may dynamically choose to hold funds in the savings pool to weather negative disposable income months or to wait out a fixed-term contract to avoid break fees. Funds in the savings pool can be split at any time: a portion can be retained in the pool, a portion applied as a one-off lump-sum repayment to the principal, or a portion used to permanently subsidize increased scheduled monthly payments.
 
+All monthly events are anchored to the Monthly Repayment Date and follow a strict sequential order within each month:
+
+1.  Pre-action adjustments: Any lump-sum principal reductions and inter-sub-loan principal transfers are applied to the outstanding balance.
+2.  Interest settlement**:** Interest accrues on the adjusted balance under the **currently locked** rate (the rate established at the end of the previous month's cycle). This settles the prior period's obligation.
+3.  Scheduled payment deduction: The regular monthly payment is deducted from the savings pool and applied to the loan (covering accrued interest first, then principal).
+4.  Restructure execution: Any restructure decisions (rate switches, term adjustments, repartitioning) take effect. Associated penalty fees, if any, are charged at this point.
+5.  New structure activation: The newly selected rate, term, and sub-loan configuration become the locked state for the next month's cycle.
+
+As a result, interest for any given month is always charged under the outgoing rate, while the restructured rate first applies to interest in the following month. This mirrors standard New Zealand mortgage practice, where interest is calculated daily and charged monthly in arrears under whichever rate was in force during that period.
+
 The outstanding mortgage itself may also be partitioned into multiple concurrent sub-loans, where each part can have its own rate type, fixed term, repayment profile, and remaining balance. This allows the model to represent common loan-structuring strategies such as staggering fixed-rate expiries. However, at all times, the number of active sub-loan parts must be less than or equal to the Maximum Loan Split Parts constant.
 
 # 5. Decision Space and Penalty Mechanics
