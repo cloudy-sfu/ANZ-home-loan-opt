@@ -1,0 +1,126 @@
+flowchart TB
+    subgraph INPUT["① User Input Module"]
+        UI_POLICY["Policy Constants\nα, β, ϕ, γ, τ, θ, λ, ζ, Ω, T, d, N"]
+        UI_INIT["Initial Conditions\nb_i0, c₀, ρ_i0, m_i0, f_i0,\nξ_i0, u_i0, A^L_i0, A^P_i0,\na_i0, p_i0, x₀=0"]
+        UI_INCOME["Income Projections\ns_t step-function, o_t"]
+        UI_HIST["Historical Data\nRetail rates weekly 2002–\nSwap rates daily 2007–"]
+    end
+
+    subgraph PREDICT["② Prediction Module — Swappable"]
+        IFACE["Prediction Interface\ninput: historical data, T, K\noutput: scenario table\nq_t, g_k_t, μ̂_k_t for t=1..T"]
+
+        MC["Monte-Carlo Engine\nSample from fitted distributions\nof macro metrics, generate S scenarios"]
+        ML["ML Forecast Engine\nShort-term point or interval\nprediction of rates"]
+        MW["Moving Window Engine\nRolling history subset\nexclude extreme regimes"]
+        RL["RL Environment Adapter\nfuture fallback"]
+
+        IFACE ---|"implements"| MC
+        IFACE ---|"implements"| ML
+        IFACE ---|"implements"| MW
+        IFACE ---|"implements"| RL
+    end
+
+    subgraph SCENEVAL["③ Scenario Evaluation Loop"]
+        SCEN_ITER["For each scenario\ns = 1..S\nembarrassingly parallel"]
+    end
+
+    subgraph MAINLOOP["④ Main Time-Step Loop — t = 1 .. T"]
+        CLASSIFY{"Classify\nsub-problem\ntype"}
+        SP_INIT["INIT  t=0\nCashback into c₀\nSentinel x₀=0"]
+        SP_CLAW["CLAWBACK-ACTIVE\n1 ≤ t < τ\nκ_t formula active"]
+        SP_POST["POST-CLAWBACK\nt ≥ τ\nκ_t = 0, pruned"]
+        SP_ANNIV["ANNIVERSARY RESET\nu_i,t mod 12 = 0\nor y_i,t = 1\nReset A^L A^P a"]
+        SP_TERM["TERMINAL  t = T\nAppend V_i,T\nto objective"]
+        BUILD["Build optimization\nsub-problem for step t\nConstraints, dynamics,\nfrozen predicted params,\nstate from t-1"]
+        STATE["Apply state transitions\nAdvance to t+1"]
+
+        CLASSIFY -->|"t = 0"| SP_INIT
+        CLASSIFY -->|"1 ≤ t < τ"| SP_CLAW
+        CLASSIFY -->|"t ≥ τ"| SP_POST
+        CLASSIFY -->|"anniversary"| SP_ANNIV
+        CLASSIFY -->|"t = T"| SP_TERM
+
+        SP_INIT --> BUILD
+        SP_CLAW --> BUILD
+        SP_POST --> BUILD
+        SP_ANNIV --> BUILD
+        SP_TERM --> BUILD
+
+        BUILD --> STATE
+    end
+
+    subgraph SOLVER["⑤ Optimization Solver — Decoupled"]
+        SOLVER_IF["Solver Interface\ninput: sub-problem\noutput: decisions at t"]
+        MIP["MILP or MINLP Solver\ne.g. Gurobi SCIP HiGHS"]
+        FULLHZ["Full-Horizon Solver\nBuild all t at once\nsingle large MILP"]
+        ROLL["Rolling-Horizon or MPC\nSolve window, fix, advance"]
+
+        SOLVER_IF ---|"backend"| MIP
+        SOLVER_IF ---|"strategy"| FULLHZ
+        SOLVER_IF ---|"strategy"| ROLL
+    end
+
+    subgraph POST["⑥ Post-Processing"]
+        FILTER{"Filter\nΣ η_t > 0 ?"}
+        DISCARD["Discard infeasible\nscenario-solution"]
+        COLLECT["Collect feasible\ncost and policy"]
+        DIST["Aggregate cost distribution\nmean, median, VaR, CVaR"]
+
+        FILTER -->|"Yes infeasible"| DISCARD
+        FILTER -->|"No feasible"| COLLECT
+        COLLECT --> DIST
+    end
+
+    UI_HIST -->|"historical\nrates"| IFACE
+    UI_POLICY -->|"policy\nconstants"| SCEN_ITER
+    UI_INIT -->|"initial\nconditions"| SCEN_ITER
+    UI_INCOME -->|"income\nprojections"| SCEN_ITER
+
+    IFACE -->|"scenario table\nq_t g_k_t μ̂_k_t"| SCEN_ITER
+
+    SCEN_ITER -->|"scenario s\n+ user inputs"| CLASSIFY
+
+    BUILD -->|"sub-problem"| SOLVER_IF
+    SOLVER_IF -->|"decisions\nη l p δ Δv n z"| STATE
+
+    STATE -->|"loop t+1"| CLASSIFY
+    STATE -->|"total cost\nand policy"| FILTER
+
+    style INPUT fill:#D6EAF8,stroke:#2471A3,color:#000000
+    style PREDICT fill:#FDEBD0,stroke:#E67E22,color:#000000
+    style SCENEVAL fill:#E8DAEF,stroke:#8E44AD,color:#000000
+    style MAINLOOP fill:#FADBD8,stroke:#C0392B,color:#000000
+    style SOLVER fill:#D5F5E3,stroke:#27AE60,color:#000000
+    style POST fill:#D4EFDF,stroke:#1E8449,color:#000000
+
+    style UI_POLICY fill:#EBF5FB,stroke:#2980B9,color:#000000
+    style UI_INIT fill:#EBF5FB,stroke:#2980B9,color:#000000
+    style UI_INCOME fill:#EBF5FB,stroke:#2980B9,color:#000000
+    style UI_HIST fill:#EBF5FB,stroke:#2980B9,color:#000000
+
+    style IFACE fill:#FEF9E7,stroke:#F39C12,color:#000000
+    style MC fill:#FEF9E7,stroke:#F39C12,color:#000000
+    style ML fill:#FEF9E7,stroke:#F39C12,color:#000000
+    style MW fill:#FEF9E7,stroke:#F39C12,color:#000000
+    style RL fill:#FEF9E7,stroke:#F39C12,color:#000000
+
+    style SCEN_ITER fill:#F5EEF8,stroke:#8E44AD,color:#000000
+
+    style CLASSIFY fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style SP_INIT fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style SP_CLAW fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style SP_POST fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style SP_ANNIV fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style SP_TERM fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style BUILD fill:#FDEDEC,stroke:#E74C3C,color:#000000
+    style STATE fill:#FDEDEC,stroke:#E74C3C,color:#000000
+
+    style SOLVER_IF fill:#EAFAF1,stroke:#2ECC71,color:#000000
+    style MIP fill:#EAFAF1,stroke:#2ECC71,color:#000000
+    style FULLHZ fill:#EAFAF1,stroke:#2ECC71,color:#000000
+    style ROLL fill:#EAFAF1,stroke:#2ECC71,color:#000000
+
+    style FILTER fill:#E9F7EF,stroke:#27AE60,color:#000000
+    style DISCARD fill:#E9F7EF,stroke:#27AE60,color:#000000
+    style COLLECT fill:#E9F7EF,stroke:#27AE60,color:#000000
+    style DIST fill:#E9F7EF,stroke:#27AE60,color:#000000
