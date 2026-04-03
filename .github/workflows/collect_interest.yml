@@ -1,8 +1,8 @@
-name: Data collection - Datawrapper
+name: Data collection - Interest
 
 on:
   schedule:
-    - cron: '0 5 * * *'
+    - cron: '0 5 * * 5'
   workflow_dispatch:
 
 jobs:
@@ -30,4 +30,6 @@ jobs:
 
       - name: Run the script
         run: |
-          julia get_data/mortgage_rate_datawrapper.jl
+          julia get_data/mortgage_rate_interest.jl
+          julia get_data/ocr.jl
+          julia get_data/wholesale_swap_rate.jl
