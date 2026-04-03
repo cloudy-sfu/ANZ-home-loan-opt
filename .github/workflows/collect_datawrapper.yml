@@ -1,0 +1,33 @@
+name: Collect ratail interest rate - Datawrapper
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    env:
+      NEON_DB: ${{ secrets.NEON_DB }}
+      JULIA_PROJECT: '.'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Julia 1.12
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12'
+      
+      - name: Cache dependencies
+        uses: julia-actions/cache@v2
+
+      - name: Install dependencies
+        uses: julia-actions/julia-buildpkg@v1
+
+      - name: Run the script
+        run: |
+          julia get_data/mortgage_rate_datawrapper.jl
