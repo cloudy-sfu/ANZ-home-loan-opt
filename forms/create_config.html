@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mortgage Repayment Optimizer Configuration</title>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f4f6f8;color:#1e293b;line-height:1.6;padding:2rem;font-size:1rem}
+
+.form-area{max-width:1100px;margin:0 auto}
+.form-area label{display:block;font-size:1rem;margin-bottom:.3rem;font-weight:500}
+.form-area input[type=number],
+.form-area input[type=text],
+.form-area select{width:100%;padding:.5rem .7rem;border:1px solid #cbd5e1;border-radius:5px;font-size:1rem;background:#fff;transition:border-color .15s}
+.form-area input:focus,
+.form-area select:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.18)}
+.form-area input:invalid:not(:placeholder-shown){border-color:#ef4444}
+.form-area .hint{font-size:1rem;color:#64748b;margin-top:.15rem}
+.form-area .req{color:#ef4444;font-weight:700}
+.form-area .row{display:grid;grid-template-columns:1fr 1fr;gap:.8rem 1.5rem;margin-bottom:.7rem}
+.form-area .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem 1.5rem;margin-bottom:.7rem}
+.form-area .field{margin-bottom:.5rem}
+.form-area .ym{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+
+.section{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:1.4rem 1.6rem;margin-bottom:1.2rem}
+.section h2{font-size:1.25rem;color:#334155;margin-bottom:.8rem;border-bottom:2px solid #e2e8f0;padding-bottom:.4rem}
+.section h3{font-size:1.1rem;color:#475569;margin:.7rem 0 .5rem}
+
+details.adv{margin-top:.8rem;border-top:1px dashed #cbd5e1;padding-top:.6rem}
+details.adv>summary{cursor:pointer;font-size:1rem;color:#6366f1;font-weight:600;user-select:none;list-style:none}
+details.adv>summary::before{content:'▸ '}
+details.adv[open]>summary::before{content:'▾ '}
+details.adv .adv-body{padding-top:.6rem}
+
+.list-group{margin-bottom:.6rem}
+.list-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:.9rem 1.1rem;margin-bottom:.55rem;position:relative}
+.list-item .item-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.list-item .item-head span{font-weight:600;font-size:1.05rem;color:#475569}
+
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border:none;border-radius:5px;font-size:1rem;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-add{background:#dbeafe;color:#2563eb;margin-bottom:.6rem}.btn-add:hover{background:#bfdbfe}
+.btn-del{background:#fee2e2;color:#dc2626;font-size:1rem;padding:.35rem .7rem}.btn-del:hover{background:#fecaca}
+.btn-primary{background:#3b82f6;color:#fff;font-size:1.05rem;padding:.6rem 1.8rem;margin-top:1rem}.btn-primary:hover{background:#2563eb}
+.btn-secondary{background:#e2e8f0;color:#334155;font-size:1.05rem;padding:.6rem 1.4rem;margin-top:1rem}.btn-secondary:hover{background:#cbd5e1}
+
+.page-head{text-align:left;margin-bottom:1.5rem}
+.page-head h1{font-size:1.6rem;color:#1e40af}
+.page-head p{font-size:1rem;color:#64748b}
+
+.actions{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap}
+
+.val-msg{display:none;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:.7rem 1.1rem;font-size:1rem;margin-bottom:.8rem}
+.val-msg.show{display:block}
+</style>
+</head>
+<body>
+<div class="form-area">
+
+<div class="page-head">
+  <h1>Mortgage Repayment Optimizer Configuration</h1>
+  <p>Fields marked <span class="req">*</span> are required.</p>
+  <div style="margin-top:.8rem">
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(this)">
+    <button type="button" class="btn btn-secondary" onclick="document.getElementById('importFile').click()">Import Config</button>
+  </div>
+</div>
+
+<div id="valMsg" class="val-msg"></div>
+
+<form id="mortgageForm" novalidate>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 1 — Revenue
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <h2>1. Revenue</h2>
+
+  <div class="row">
+    <div class="field">
+      <label>Repayment Date of Month <span class="req">*</span></label>
+      <input type="number" id="d" min="1" max="31" step="1" required>
+    </div>
+    <div class="field">
+      <label>Total Loan Amount (NZD) <span class="req">*</span></label>
+      <input type="text" id="totalLoanDisplay" readonly style="background:#f1f5f9;" required>
+      <div class="hint">Auto-calculated from the loan parts in "Loan Structure" section.</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label>Disposable Balance (NZD) <span class="req">*</span></label>
+      <input type="number" id="c0" min="0" step="0.01" value="0" required>
+      <div class="hint">Account bank balance that can be used to repay home loan.</div>
+    </div>
+    <div class="field">
+      <label>Prediction Start <span class="req">*</span></label>
+      <div class="ym">
+        <input type="number" id="startYear" step="1" required>
+        <select id="startMonth" required></select>
+      </div>
+      <div class="hint">The year and month when the optimisation begins.</div>
+    </div>
+  </div>
+
+  <h3>Monthly Disposable Income</h3>
+  <div class="row">
+    <div class="field">
+      <label>Current Monthly Disposable Income (NZD) <span class="req">*</span></label>
+      <input type="number" id="s0" step="0.01" required>
+      <div class="hint">Monthly surplus after tax, necessities, and living expenses. Can be negative if expenses exceed income.</div>
+    </div>
+  </div>
+
+  <details class="adv">
+    <summary>Advanced</summary>
+    <div class="adv-body">
+      <div class="row">
+        <div class="field">
+          <label>Prediction Horizon (months) <span class="req">*</span></label>
+          <input type="number" id="T" min="1" max="600" step="1" value="60" required>
+          <div class="hint">How many months into the future the optimiser evaluates. Default 60 (5 years).</div>
+        </div>
+      </div>
+
+      <h3>Future Income Changes</h3>
+      <button type="button" class="btn btn-add" onclick="addSalaryChange()">+ Add Income Change</button>
+      <div class="list-group" id="salaryChangesList"></div>
+
+      <h3>One-Off Extra Income</h3>
+      <p style="font-size:1rem;color:#64748b;margin-bottom:.4rem">Lump sums you expect to receive, such as bonuses, tax refunds, or gifts.</p>
+      <button type="button" class="btn btn-add" onclick="addOneOff()">+ Add One-Off Income</button>
+      <div class="list-group" id="oneOffList"></div>
+    </div>
+  </details>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 2 — LOAN STRUCTURE
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <h2>2. Loan Structure</h2>
+  <p style="font-size:1rem;color:#64748b;margin-bottom:.6rem">
+    Describe each part of your loan. For a simple loan with no splits, one part is enough.
+  </p>
+
+  <button type="button" class="btn btn-add" id="btnAddSubloan" onclick="addSubloan()">+ Add Loan Part</button>
+  <div class="list-group" id="subloanList"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 3 — BANK POLICY
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <h2>3. Bank Policy</h2>
+  <p style="font-size:1rem;color:#64748b;margin-bottom:.6rem">
+    Settings that depend on your bank's terms and conditions. Check your loan agreement or ask your bank. Defaults are pre-filled for typical NZ bank policies.
+  </p>
+  <!-- Issue 4: all fields keep required attribute but no visual * -->
+  <details class="adv">
+    <summary>Advanced</summary>
+    <div class="adv-body">
+      <div class="row">
+        <div class="field">
+          <label>Max Loan Parts <span class="req">*</span></label>
+          <input type="number" id="N" min="1" max="20" step="1" value="4" required>
+          <div class="hint">Maximum number of loan splits your bank allows at the same time.</div>
+        </div>
+        <div class="field">
+          <label>Restructure Fee (NZD) <span class="req">*</span></label>
+          <input type="number" id="phi" min="0" step="0.01" value="0" required>
+          <div class="hint">Flat admin fee charged each time you break or restructure a loan part.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Penalty-Free Lump Sum (%) <span class="req">*</span></label>
+          <input type="number" id="alpha" min="0" max="100" step="0.01" value="5" required>
+          <div class="hint">Each year, you can make extra repayments up to this percentage of the anniversary balance without penalty.</div>
+        </div>
+        <div class="field">
+          <label>Penalty-Free Payment Increase (NZD) <span class="req">*</span></label>
+          <input type="number" id="beta" min="0" step="0.01" value="1071" required>
+          <div class="hint">The most you can raise your regular payment by each anniversary year without triggering a fee.</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Available Fixed Terms <span class="req">*</span></label>
+          <input type="text" id="K" value="0,6,12,18,24,36,48,60" pattern="^(\d+)(,\s*\d+)*$" required>
+          <div class="hint">Comma-separated list of rate products in months. 0 means floating rate.</div>
+        </div>
+      </div>
+
+      <h3>Cashback</h3>
+      <div class="row">
+        <div class="field">
+          <label>Cashback (%) <span class="req">*</span></label>
+          <input type="number" id="gamma" min="0" max="100" step="0.01" value="0" required>
+          <div class="hint">Percentage of your loan the bank pays you as a cash incentive at drawdown.</div>
+        </div>
+        <div class="field">
+          <label>Clawback Period (months) <span class="req">*</span></label>
+          <input type="number" id="tau" min="0" step="1" value="36" required>
+          <div class="hint">If you repay the entire loan within this many months, you must return some or all of the cashback.</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Clawback Type <span class="req">*</span></label>
+          <select id="theta" required>
+            <option value="0">Full — return all cashback</option>
+            <option value="1">Pro-rata — return remaining fraction</option>
+          </select>
+          <div class="hint">Full: repay entire cashback. Pro-rata: repay only for the unused portion of the clawback period.</div>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SECTION 4 — SOLVER SETTINGS
+     ══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <h2>4. Solver Settings</h2>
+  <p style="font-size:1rem;color:#64748b;margin-bottom:.6rem">
+    Tuning parameters for the optimisation engine. Defaults are pre-filled and work well for most cases.
+  </p>
+
+  <!-- Issue 4: all fields keep required attribute but no visual * -->
+  <details class="adv">
+    <summary>Advanced</summary>
+    <div class="adv-body">
+      <div class="row">
+        <div class="field">
+          <label>Bankruptcy Penalty Weight <span class="req">*</span></label>
+          <input type="number" id="Omega" min="0" step="1" value="1000000" required>
+          <div class="hint">A very large cost applied when cash runs out, forcing the solver to avoid bankruptcy. Higher = stronger avoidance.</div>
+        </div>
+        <div class="field">
+          <label>Interest Decay Factor <span class="req">*</span></label>
+          <input type="number" id="zeta" min="0.01" max="0.99" step="0.01" value="0.55" required>
+          <div class="hint">Approximates how total interest shrinks as principal is repaid over time. Typically 0.55–0.60 for standard mortgages.</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>6-Month Rate Blend Weight <span class="req">*</span></label>
+          <input type="number" id="lambda" min="0" max="1" step="0.01" value="0.5" required>
+          <div class="hint">How much the 6-month fixed rate follows the official cash rate vs. the 1-year swap rate. 1 = fully tracks cash rate; 0 = fully tracks 1-year swap.</div>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<!-- ACTIONS -->
+<div class="actions">
+  <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+  <button type="button" class="btn btn-primary" onclick="exportJSON()">Export Config</button>
+</div>
+
+</form>
+</div>
+
+<script>
+// Ref: model_definition.md — variable mappings for f_{i,0}, u_{i,0}, xi_{i,0}, a_{i,0}
+
+const MONTH_OPTS = `<option value=""></option>
+<option value="1">1</option><option value="2">2</option><option value="3">3</option>
+<option value="4">4</option><option value="5">5</option><option value="6">6</option>
+<option value="7">7</option><option value="8">8</option><option value="9">9</option>
+<option value="10">10</option><option value="11">11</option><option value="12">12</option>`;
+
+let subloanIdx = 0;
+let salaryIdx  = 0;
+let oneoffIdx  = 0;
+
+function toNumberOrNull(value){
+  if(value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toIntOrNull(value){
+  const n = toNumberOrNull(value);
+  return (n !== null && Number.isInteger(n)) ? n : null;
+}
+
+// ── Issue 2: Build fixed-term dropdown from K field, excluding 0 (floating) ──
+function getFixedTermOptions(){
+  const kVal = document.getElementById('K').value;
+  const terms = kVal
+    .split(',')
+    .map(s => toIntOrNull(s.trim()))
+    .filter(n => n !== null && n > 0);
+  let html = '<option value="">Floating (no fixed term)</option>';
+  terms.forEach(k => {
+    const label = k >= 12
+      ? (k/12) + ' year' + (k > 12 ? 's' : '') + ' (' + k + ' mo)'
+      : k + ' months';
+    html += `<option value="${k}">${label}</option>`;
+  });
+  return html;
+}
+
+// ── Issue 2 revised: xi_{i,0} is resolved server-side from DB ──
+// Only two user inputs needed: fixed term product + contract start date.
+// Backend looks up g_{k, contract_start} from historical swap rate DB.
+function subloanHTML(i, isFirst){
+  return `
+  <div class="list-item" data-sl="${i}">
+    <div class="item-head">
+      <span>Loan Part</span>
+      ${isFirst ? '' : '<button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>'}
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Principal (NZD) <span class="req">*</span></label>
+        <input type="number" class="sl-b" min="0" step="0.01" required>
+        <div class="hint">Outstanding balance of this loan part.</div>
+      </div>
+      <div class="field">
+        <label>Remaining Loan Term (months) <span class="req">*</span></label>
+        <input type="number" class="sl-m" min="0" step="1" required>
+        <div class="hint">How many months until this part is scheduled to be fully repaid.</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Current Regular Payment (NZD)</label>
+        <input type="number" class="sl-p0" min="0" step="0.01" value="">
+        <div class="hint">Most recent monthly payment. Leave blank to let the program auto-calculate by floating interest rate.</div>
+      </div>
+    </div>
+
+    <details class="adv">
+      <summary>Advanced — Existing Fixed-Rate Contract</summary>
+      <div class="adv-body">
+        <p style="font-size:1rem;color:#64748b;margin-bottom:.5rem">
+          Fill these in only if this loan part is currently locked into a fixed rate. For floating-rate or brand-new loans, leave as defaults.
+        </p>
+
+        <div class="row">
+          <div class="field">
+            <label>Remaining Fixed Period (months) <span class="req">*</span></label>
+            <input type="number" class="sl-f" min="0" step="1" value="0" required>
+            <div class="hint">Months left on your current fixed-rate agreement, 0 if no fixed contract.</div>
+          </div>
+          <div class="field">
+            <label>Contract Start Date</label>
+            <div class="ym">
+              <input type="number" class="sl-contractYear" step="1">
+              <select class="sl-contractMonth">${MONTH_OPTS}</select>
+            </div>
+            <div class="hint">The interbank swap rate that was current when you locked in your fixed rate. Used to calculate break fees.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Extra Repayments Made This Year (NZD) <span class="req">*</span></label>
+            <input type="number" class="sl-AL" min="0" step="0.01" value="0" required>
+            <div class="hint">Total lump-sum payments already made on this part since the last contract anniversary. Counts toward the penalty-free allowance.</div>
+          </div>
+          <div class="field">
+            <label>Payment Increase Already Used? <span class="req">*</span></label>
+            <select class="sl-AP" required><option value="0">No</option><option value="1">Yes</option></select>
+            <div class="hint">Whether you have already raised the regular payment on this part during the current anniversary year (once per year is penalty-free).</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label>Balance at Last Anniversary (NZD)</label>
+            <input type="number" class="sl-a" min="0" step="0.01">
+            <div class="hint">The principal balance when the current anniversary year began. The penalty-free lump-sum allowance is a percentage of this figure. Use current principal if the loan just started. Leave blank to use current principal.</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>`;
+}
+
+function salaryChangeHTML(i){
+  return `
+  <div class="list-item" data-sc="${i}">
+    <div class="item-head">
+      <span>Income Change</span>
+      <button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>When <span class="req">*</span></label>
+        <div class="ym">
+          <input type="number" class="sc-year" step="1" required>
+          <select class="sc-month" required>${MONTH_OPTS}</select>
+        </div>
+        <div class="hint">Year and month when the income changes.</div>
+      </div>
+      <div class="field">
+        <label>New Monthly Disposable Income (NZD) <span class="req">*</span></label>
+        <input type="number" class="sc-val" step="0.01" required>
+        <div class="hint">The new amount each month from this point onward, until the next change.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function oneOffHTML(i){
+  return `
+  <div class="list-item" data-oo="${i}">
+    <div class="item-head">
+      <span>One-Off Income Event</span>
+      <button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>When <span class="req">*</span></label>
+        <div class="ym">
+          <input type="number" class="oo-year" step="1" required>
+          <select class="oo-month" required>${MONTH_OPTS}</select>
+        </div>
+        <div class="hint">Year and month you expect to receive this income.</div>
+      </div>
+      <div class="field">
+        <label>Amount (NZD) <span class="req">*</span></label>
+        <input type="number" class="oo-val" min="0" step="0.01" required>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Add / delete helpers ──────────────────────────────────
+function addSubloan(){
+  const maxNInput = toIntOrNull(document.getElementById('N').value);
+  const maxN = maxNInput === null ? 20 : maxNInput;
+  const list = document.getElementById('subloanList');
+  if(list.children.length >= maxN){
+    alert('Maximum ' + maxN + ' loan parts allowed.');
+    return;
+  }
+  const isFirst = list.children.length === 0;
+  list.insertAdjacentHTML('beforeend', subloanHTML(subloanIdx++, isFirst));
+}
+
+function addSalaryChange(){
+  document.getElementById('salaryChangesList')
+    .insertAdjacentHTML('beforeend', salaryChangeHTML(salaryIdx++));
+}
+
+function addOneOff(){
+  document.getElementById('oneOffList')
+    .insertAdjacentHTML('beforeend', oneOffHTML(oneoffIdx++));
+}
+
+function delItem(btn){ btn.closest('.list-item').remove(); }
+
+// ── Derive f_{i,0} and u_{i,0} from contract start + term ──
+// Ref: model_definition.md — u = months elapsed, f = max(0, k - u)
+function deriveFixedTermState(contractYear, contractMonth, fixedK, predStartYear, predStartMonth){
+  if(!contractYear || !contractMonth || !fixedK){
+    return { f: 0, u: 0 };
+  }
+  const u = (predStartYear - contractYear) * 12 + (predStartMonth - contractMonth);
+  const f = Math.max(0, fixedK - u);
+  return { f: f, u: Math.max(0, u) };
+}
+
+// ── Validation ────────────────────────────────────────────
+function validate(){
+  const errors = [];
+  const form = document.getElementById('mortgageForm');
+
+  form.querySelectorAll(':invalid').forEach(el => {
+    const lbl = el.closest('.field')?.querySelector('label')?.textContent?.replace(/\*/g,'').trim()
+             || el.id || 'A field';
+    errors.push('"' + lbl + '" is required or has an invalid value.');
+  });
+
+  if(document.getElementById('subloanList').children.length === 0)
+    errors.push('At least one loan part is required.');
+
+  const kVal = document.getElementById('K').value;
+  if(kVal && !/^\d+(,\s*\d+)*$/.test(kVal.trim()))
+    errors.push('Available Fixed Terms must be comma-separated whole numbers (e.g. 0,6,12).');
+
+  let sumB = 0;
+  document.querySelectorAll('.sl-b').forEach(el => {
+    const principal = toNumberOrNull(el.value);
+    if(principal !== null) sumB += principal;
+  });
+  if(sumB <= 0) errors.push('Total principal across all loan parts must be greater than zero.');
+
+  const z = toNumberOrNull(document.getElementById('zeta').value);
+  if(z !== null && (z <= 0 || z >= 1))
+    errors.push('Interest Decay Factor must be between 0 and 1 (exclusive).');
+
+  const maxNInput = toIntOrNull(document.getElementById('N').value);
+  const maxN = maxNInput === null ? 1 : maxNInput;
+  const slCount = document.getElementById('subloanList').children.length;
+  if(slCount > maxN)
+    errors.push('You have ' + slCount + ' loan parts but Max Loan Parts is ' + maxN + '.');
+
+  if(!document.getElementById('startYear').value || !document.getElementById('startMonth').value)
+    errors.push('Please select a Prediction Start year and month.');
+
+  // Validate consistency for existing fixed-rate contract fields.
+  // Form now captures remaining fixed period via .sl-f.
+  document.querySelectorAll('#subloanList .list-item').forEach((el, idx) => {
+    const fixedMonths = toIntOrNull(el.querySelector('.sl-f')?.value);
+    const cYear       = toIntOrNull(el.querySelector('.sl-contractYear')?.value);
+    const cMonth      = toIntOrNull(el.querySelector('.sl-contractMonth')?.value);
+
+    const hasFixed = fixedMonths !== null && fixedMonths > 0;
+    const hasDate  = cYear !== null && cMonth !== null && cYear > 0 && cMonth >= 1 && cMonth <= 12;
+
+    if(hasFixed && !hasDate){
+      errors.push('A loan part has remaining fixed period set but contract start date is missing.');
+    }
+    if(!hasFixed && hasDate){
+      errors.push('A loan part has contract start date provided but remaining fixed period is 0.');
+    }
+
+    if(hasDate){
+      const pYear  = toIntOrNull(document.getElementById('startYear').value);
+      const pMonth = toIntOrNull(document.getElementById('startMonth').value);
+      if(pYear && pMonth){
+        const elapsed = (pYear - cYear) * 12 + (pMonth - cMonth);
+        if(elapsed < 0){
+          errors.push('A loan part has contract start date after the prediction start date.');
+        }
+      }
+    }
+  });
+
+  return [...new Set(errors)];
+}
+
+// ── Collect form data ─────────────────────────────────────
+// Issue 1: a_{i,0} defaults to b_{i,0} when blank/0
+// Issue 2: f, u derived; xi resolved server-side from DB (not in JSON)
+function collectData(){
+  const num = id => toNumberOrNull(document.getElementById(id).value);
+  const int = id => toIntOrNull(document.getElementById(id).value);
+
+  const predStartYear  = int('startYear');
+  const predStartMonth = int('startMonth');
+
+  const data = {
+    prediction_start: {
+      year: predStartYear,
+      month: predStartMonth
+    },
+    user_choices: {
+      repayment_day: int('d'),
+      disposable_balance_nzd: num('c0'),
+      monthly_disposable_income_nzd: num('s0'),
+      income_changes: [],
+      one_off_income: [],
+      prediction_horizon_months: int('T')
+    },
+    bank_policy: {
+      max_loan_parts: int('N'),
+      restructure_fee_nzd: num('phi'),
+      penalty_free_lumpsum_pct: num('alpha'),
+      penalty_free_payment_increase_nzd: num('beta'),
+      available_fixed_terms_months: document.getElementById('K').value
+        .split(',').map(s => toIntOrNull(s.trim())).filter(n => n !== null),
+      cashback_pct: num('gamma'),
+      clawback_period_months: int('tau'),
+      clawback_type: int('theta')
+    },
+    solver_settings: {
+      emergency_shortfall_penalty: num('Omega'),
+      interest_decay_factor: num('zeta'),
+      six_month_blend_weight: num('lambda')
+    },
+    loan_parts: []
+  };
+
+  // Income changes
+  document.querySelectorAll('#salaryChangesList .list-item').forEach(el => {
+    data.user_choices.income_changes.push({
+      year:  toIntOrNull(el.querySelector('.sc-year').value),
+      month: toIntOrNull(el.querySelector('.sc-month').value),
+      new_income_nzd: toNumberOrNull(el.querySelector('.sc-val').value)
+    });
+  });
+
+  // One-off income
+  document.querySelectorAll('#oneOffList .list-item').forEach(el => {
+    data.user_choices.one_off_income.push({
+      year:  toIntOrNull(el.querySelector('.oo-year').value),
+      month: toIntOrNull(el.querySelector('.oo-month').value),
+      amount_nzd: toNumberOrNull(el.querySelector('.oo-val').value)
+    });
+  });
+
+  // Loan parts
+  document.querySelectorAll('#subloanList .list-item').forEach((el, idx) => {
+    const principal = toNumberOrNull(el.querySelector('.sl-b').value);
+
+    const fixedMonths = toIntOrNull(el.querySelector('.sl-f').value);
+    const cYear       = toIntOrNull(el.querySelector('.sl-contractYear').value);
+    const cMonth      = toIntOrNull(el.querySelector('.sl-contractMonth').value);
+    const derived = deriveFixedTermState(cYear, cMonth, fixedMonths, predStartYear, predStartMonth);
+
+    // Issue 1: default a to principal when blank or 0
+    const rawA = toNumberOrNull(el.querySelector('.sl-a').value);
+    const anniversaryBalance = (rawA === null || rawA === 0) ? principal : rawA;
+
+    const p0 = toNumberOrNull(el.querySelector('.sl-p0').value);
+
+    const remainingTermMonths = toIntOrNull(el.querySelector('.sl-m').value);
+    const extraRepaymentsThisYear = toNumberOrNull(el.querySelector('.sl-AL').value);
+    const paymentIncreaseUsed = toIntOrNull(el.querySelector('.sl-AP').value);
+
+    data.loan_parts.push({
+      principal_nzd: principal,
+      remaining_term_months: remainingTermMonths,
+      current_payment_nzd: p0,
+      // Issue 2: user inputs for server-side derivation
+      fixed_term_product_months: fixedMonths,
+      contract_start_year: cYear,
+      contract_start_month: cMonth,
+      // Issue 2: client-derived for reference (server recalculates authoritatively)
+      fixed_remaining_months: derived.f,
+      months_since_contract_start: derived.u,
+      // Issue 2 revised: wholesale_rate_at_lock NOT included —
+      //   server resolves xi_{i,0} = g_{k, contract_start} from historical swap DB
+      extra_repayments_this_year_nzd: extraRepaymentsThisYear,
+      payment_increase_used: paymentIncreaseUsed,
+      // Issue 1: defaulted to principal
+      balance_at_last_anniversary_nzd: anniversaryBalance
+    });
+  });
+
+  return data;
+}
+
+function updateTotalLoan() {
+  let sum = 0;
+  document.querySelectorAll('.sl-b').forEach(el => {
+    const principal = toNumberOrNull(el.value);
+    if(principal !== null) sum += principal;
+  });
+  document.getElementById('totalLoanDisplay').value =
+    sum.toLocaleString('en-NZ', { minimumFractionDigits: 2 });
+}
+
+document.getElementById('subloanList')
+  .addEventListener('input', e => {
+    if (e.target.classList.contains('sl-b')) updateTotalLoan();
+  });
+
+function buildExportFilename(){
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  const mm = pad(now.getMonth() + 1);
+  const dd = pad(now.getDate());
+  const HH = pad(now.getHours());
+  const MM = pad(now.getMinutes());
+  const SS = pad(now.getSeconds());
+  return `config-${yyyy}-${mm}-${dd}-${HH}-${MM}-${SS}.json`;
+}
+
+// ── Export JSON ───────────────────────────────────────────
+function exportJSON(){
+  const msgEl = document.getElementById('valMsg');
+  const errors = validate();
+  if(errors.length){
+    msgEl.innerHTML = '<strong>Please fix the following:</strong><ul>'
+      + errors.map(e => '<li>' + e + '</li>').join('') + '</ul>';
+    msgEl.classList.add('show');
+    msgEl.scrollIntoView({ behavior:'smooth', block:'center' });
+    return;
+  }
+  msgEl.classList.remove('show');
+
+  const data = collectData();
+  const jsonStr = JSON.stringify(data, null, 2);
+
+  const blob = new Blob([jsonStr], { type:'application/json;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = buildExportFilename();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── Import JSON ───────────────────────────────────────────
+function importJSON(fileInput){
+  const file = fileInput.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    fileInput.value = '';
+    let data;
+    try { data = JSON.parse(e.target.result); }
+    catch(err){ alert('Invalid JSON file: ' + err.message); return; }
+    if(!data || typeof data !== 'object'){ alert('Config file is empty or not a valid object.'); return; }
+
+    const safeNum = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+    const safeInt = v => {
+      const n = safeNum(v);
+      return (n !== null && Number.isInteger(n)) ? n : null;
+    };
+    const setVal  = (id, v) => { if(v !== null && v !== undefined) document.getElementById(id).value = v; };
+
+    // prediction_start
+    const ps = data.prediction_start;
+    if(ps && typeof ps === 'object'){
+      const y = safeInt(ps.year), m = safeInt(ps.month);
+      if(y) setVal('startYear', y);
+      if(m && m >= 1 && m <= 12) setVal('startMonth', m);
+    }
+
+    // user_choices
+    const uc = data.user_choices;
+    if(uc && typeof uc === 'object'){
+      if(safeInt(uc.repayment_day) !== null){
+        const d = safeInt(uc.repayment_day);
+        if(d >= 1 && d <= 31) setVal('d', d);
+      }
+      if(safeNum(uc.disposable_balance_nzd) !== null) setVal('c0', safeNum(uc.disposable_balance_nzd));
+      if(safeNum(uc.monthly_disposable_income_nzd) !== null) setVal('s0', safeNum(uc.monthly_disposable_income_nzd));
+      if(safeInt(uc.prediction_horizon_months) !== null && safeInt(uc.prediction_horizon_months) >= 1)
+        setVal('T', safeInt(uc.prediction_horizon_months));
+
+      if(Array.isArray(uc.income_changes)){
+        document.getElementById('salaryChangesList').innerHTML = '';
+        salaryIdx = 0;
+        uc.income_changes.forEach(ic => {
+          if(!ic || typeof ic !== 'object') return;
+          const yr = safeInt(ic.year), mo = safeInt(ic.month), val = safeNum(ic.new_income_nzd);
+          if(!yr || !mo || mo < 1 || mo > 12 || val === null) return;
+          addSalaryChange();
+          const item = document.querySelector('#salaryChangesList .list-item:last-child');
+          item.querySelector('.sc-year').value = yr;
+          item.querySelector('.sc-month').value = mo;
+          item.querySelector('.sc-val').value = val;
+        });
+      }
+
+      if(Array.isArray(uc.one_off_income)){
+        document.getElementById('oneOffList').innerHTML = '';
+        oneoffIdx = 0;
+        uc.one_off_income.forEach(oo => {
+          if(!oo || typeof oo !== 'object') return;
+          const yr = safeInt(oo.year), mo = safeInt(oo.month), val = safeNum(oo.amount_nzd);
+          if(!yr || !mo || mo < 1 || mo > 12 || val === null || val < 0) return;
+          addOneOff();
+          const item = document.querySelector('#oneOffList .list-item:last-child');
+          item.querySelector('.oo-year').value = yr;
+          item.querySelector('.oo-month').value = mo;
+          item.querySelector('.oo-val').value = val;
+        });
+      }
+    }
+
+    // bank_policy
+    const bp = data.bank_policy;
+    if(bp && typeof bp === 'object'){
+      if(safeInt(bp.max_loan_parts) !== null && safeInt(bp.max_loan_parts) >= 1)
+        setVal('N', safeInt(bp.max_loan_parts));
+      if(safeNum(bp.restructure_fee_nzd) !== null) setVal('phi', safeNum(bp.restructure_fee_nzd));
+      if(safeNum(bp.penalty_free_lumpsum_pct) !== null){
+        const v = safeNum(bp.penalty_free_lumpsum_pct);
+        if(v >= 0 && v <= 100) setVal('alpha', v);
+      }
+      if(safeNum(bp.penalty_free_payment_increase_nzd) !== null)
+        setVal('beta', safeNum(bp.penalty_free_payment_increase_nzd));
+      if(Array.isArray(bp.available_fixed_terms_months)){
+        const valid = bp.available_fixed_terms_months.filter(n => safeInt(n) !== null && safeInt(n) >= 0).map(n => safeInt(n));
+        if(valid.length) setVal('K', valid.join(','));
+      }
+      if(safeNum(bp.cashback_pct) !== null){
+        const v = safeNum(bp.cashback_pct);
+        if(v >= 0 && v <= 100) setVal('gamma', v);
+      }
+      if(safeInt(bp.clawback_period_months) !== null) setVal('tau', safeInt(bp.clawback_period_months));
+      if(safeInt(bp.clawback_type) !== null && (bp.clawback_type === 0 || bp.clawback_type === 1))
+        setVal('theta', safeInt(bp.clawback_type));
+    }
+
+    // solver_settings
+    const ss = data.solver_settings;
+    if(ss && typeof ss === 'object'){
+      if(safeNum(ss.emergency_shortfall_penalty) !== null) setVal('Omega', safeNum(ss.emergency_shortfall_penalty));
+      if(safeNum(ss.interest_decay_factor) !== null){
+        const v = safeNum(ss.interest_decay_factor);
+        if(v > 0 && v < 1) setVal('zeta', v);
+      }
+      if(safeNum(ss.six_month_blend_weight) !== null){
+        const v = safeNum(ss.six_month_blend_weight);
+        if(v >= 0 && v <= 1) setVal('lambda', v);
+      }
+    }
+
+    // loan_parts — supports both new format and old format (backward compat)
+    if(Array.isArray(data.loan_parts) && data.loan_parts.length > 0){
+      document.getElementById('subloanList').innerHTML = '';
+      subloanIdx = 0;
+      const maxNInput = toIntOrNull(document.getElementById('N').value);
+      const maxN = maxNInput === null ? 20 : maxNInput;
+      data.loan_parts.forEach((lp, idx) => {
+        if(!lp || typeof lp !== 'object') return;
+        if(idx >= maxN) return;
+        if(safeNum(lp.principal_nzd) === null || safeNum(lp.principal_nzd) < 0) return;
+        if(safeInt(lp.remaining_term_months) === null || safeInt(lp.remaining_term_months) < 0) return;
+        addSubloan();
+        const item = document.querySelector('#subloanList .list-item:last-child');
+        item.querySelector('.sl-b').value = safeNum(lp.principal_nzd);
+        item.querySelector('.sl-m').value = safeInt(lp.remaining_term_months);
+        if(safeNum(lp.current_payment_nzd) !== null && safeNum(lp.current_payment_nzd) >= 0)
+          item.querySelector('.sl-p0').value = safeNum(lp.current_payment_nzd);
+
+        // New format: fixed_term_product_months + contract_start_*
+        if(safeInt(lp.fixed_term_product_months) !== null && safeInt(lp.fixed_term_product_months) > 0)
+          item.querySelector('.sl-f').value = safeInt(lp.fixed_term_product_months);
+        if(safeInt(lp.contract_start_year) !== null)
+          item.querySelector('.sl-contractYear').value = safeInt(lp.contract_start_year);
+        if(safeInt(lp.contract_start_month) !== null)
+          item.querySelector('.sl-contractMonth').value = safeInt(lp.contract_start_month);
+
+        // Backward compat: old format had f/u directly, reverse-derive contract start
+        if(!safeInt(lp.fixed_term_product_months) && safeInt(lp.fixed_remaining_months) > 0){
+          const f = safeInt(lp.fixed_remaining_months);
+          const uRaw = safeInt(lp.months_since_contract_start);
+          const u = uRaw === null ? 0 : uRaw;
+          const k = f + u;
+          const pY = safeInt(data.prediction_start?.year);
+          const pM = safeInt(data.prediction_start?.month);
+          if(pY && pM){
+            let cM = pM - (u % 12);
+            let cY = pY - Math.floor(u / 12);
+            if(cM <= 0){ cM += 12; cY -= 1; }
+            item.querySelector('.sl-f').value = k;
+            item.querySelector('.sl-contractYear').value = cY;
+            item.querySelector('.sl-contractMonth').value = cM;
+          }
+        }
+
+        if(safeNum(lp.extra_repayments_this_year_nzd) !== null)
+          item.querySelector('.sl-AL').value = safeNum(lp.extra_repayments_this_year_nzd);
+        if(safeInt(lp.payment_increase_used) !== null && (lp.payment_increase_used === 0 || lp.payment_increase_used === 1))
+          item.querySelector('.sl-AP').value = safeInt(lp.payment_increase_used);
+        // Issue 1: only populate if meaningfully different from principal
+        if(safeNum(lp.balance_at_last_anniversary_nzd) !== null && safeNum(lp.balance_at_last_anniversary_nzd) > 0
+           && safeNum(lp.balance_at_last_anniversary_nzd) !== safeNum(lp.principal_nzd))
+          item.querySelector('.sl-a').value = safeNum(lp.balance_at_last_anniversary_nzd);
+      });
+      updateTotalLoan();
+    }
+
+    document.getElementById('valMsg').classList.remove('show');
+  };
+  reader.readAsText(file);
+}
+
+// ── Reset ─────────────────────────────────────────────────
+function resetForm(){
+  if(!confirm('Reset all fields to defaults?')) return;
+  document.getElementById('mortgageForm').reset();
+  document.getElementById('subloanList').innerHTML = '';
+  document.getElementById('salaryChangesList').innerHTML = '';
+  document.getElementById('oneOffList').innerHTML = '';
+  document.getElementById('valMsg').classList.remove('show');
+  subloanIdx = 0; salaryIdx = 0; oneoffIdx = 0;
+  addSubloan();
+  const now = new Date();
+  document.getElementById('startYear').value = now.getFullYear();
+  document.getElementById('startMonth').value = now.getMonth() + 1; // getMonth() is 0-based
+}
+
+// ── Init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('startMonth').insertAdjacentHTML('beforeend', MONTH_OPTS);
+  addSubloan();
+  const now = new Date();
+  document.getElementById('startYear').value  = now.getFullYear();
+  document.getElementById('startMonth').value = now.getMonth() + 1; // getMonth() is 0-based
+});
+
+</script>
+</body>
+</html>

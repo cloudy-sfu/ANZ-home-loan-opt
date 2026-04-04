@@ -36,3 +36,5 @@ Add environment variables into GitHub repository settings "Secrets and variables
 
 ## Usage
 
+Fill the form and export the config at https://cloudy-sfu.github.io/ANZ-home-loan-opt/create_config.html
+
