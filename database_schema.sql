@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Ws24mbdRhaUUaZBGMczr9nPnyZjQI6tvY7CFIQJSY5weFqkaGZNCDn7kIA7Bqe8
+\restrict 4dfhApGQR5O0lW9Ua7La2wwodxHss5W2XsthkbfaE0Pvj0VJIAfEihCtWYn7swL
 
 -- Dumped from database version 18.2 (94b8da0)
 -- Dumped by pg_dump version 18.3
@@ -39,29 +39,31 @@ CREATE TABLE public.avg_mortgage_rate (
 
 
 --
--- Name: ocr; Type: TABLE; Schema: public; Owner: -
+-- Name: ins_mortgage_rate; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.ocr (
-    "Date" date CONSTRAINT ocr_date_not_null NOT NULL,
-    "OCR" double precision
-);
-
-
---
--- Name: retail_rate; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.retail_rate (
-    "Date" date DEFAULT ((CURRENT_TIMESTAMP AT TIME ZONE 'Pacific/Auckland'::text))::date NOT NULL,
-    "Bank" character varying(8) NOT NULL,
+CREATE TABLE public.ins_mortgage_rate (
+    "Date" date DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Pacific/Auckland'::text) NOT NULL,
+    "Bank" character varying(32) NOT NULL,
+    "Product" character varying(32) NOT NULL,
     "_6_Months" double precision,
     "_1_Year" double precision,
     "_2_Years" double precision,
     "_3_Years" double precision,
     "_4_Years" double precision,
     "_5_Years" double precision,
+    "_18_Months" double precision,
     "Floating" double precision
+);
+
+
+--
+-- Name: ocr; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ocr (
+    "Date" date CONSTRAINT ocr_date_not_null NOT NULL,
+    "OCR" double precision
 );
 
 
@@ -90,11 +92,11 @@ ALTER TABLE ONLY public.avg_mortgage_rate
 
 
 --
--- Name: retail_rate constraint_1; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: ins_mortgage_rate constraint_1; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.retail_rate
-    ADD CONSTRAINT constraint_1 PRIMARY KEY ("Date", "Bank");
+ALTER TABLE ONLY public.ins_mortgage_rate
+    ADD CONSTRAINT constraint_1 PRIMARY KEY ("Date", "Bank", "Product");
 
 
 --
@@ -117,5 +119,5 @@ ALTER TABLE ONLY public.wholesale_swap_rate
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ws24mbdRhaUUaZBGMczr9nPnyZjQI6tvY7CFIQJSY5weFqkaGZNCDn7kIA7Bqe8
+\unrestrict 4dfhApGQR5O0lW9Ua7La2wwodxHss5W2XsthkbfaE0Pvj0VJIAfEihCtWYn7swL
 
