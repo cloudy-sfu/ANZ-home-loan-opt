@@ -30,6 +30,7 @@ jobs:
 
       - name: Run the script
         run: |
-          julia get_data/mortgage_rate_interest.jl
+          julia get_data/avg_mortgage_rate.jl
           julia get_data/ocr.jl
           julia get_data/wholesale_swap_rate.jl
+          julia get_data/ins_mortgage_rate.jl
