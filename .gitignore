@@ -39,3 +39,4 @@ pluto.ps1
 
 raw
 .vscode
+sync_db_schema.ps1

@@ -19,8 +19,8 @@ sort!(ocr, :date)
 # Keep only rows where value changed
 changed = [true; [ocr.value[i] != ocr.value[i-1] for i in 2:nrow(ocr)]]
 ocr_1 = ocr[changed, :]
-rename!(ocr_1, "date" => "Date", "value" => "OCR")
+rename!(ocr_1, "value" => "ocr")
 
 const c = LibPQ.Connection(ENV["NEON_DB"])
-insert_if_not_exists(c, ocr_1, ["Date"], "ocr")
+insert_if_not_exists(c, ocr_1, ["date"], "ocr")
 close(c)

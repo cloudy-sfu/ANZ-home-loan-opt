@@ -67,19 +67,19 @@ end
 parse_rate(s::AbstractString) = isempty(s) ? missing : parse(Float64, s)
 
 col_rename = Dict(
-    "Variable floating" => :Floating,
-    "6months" => :_6_Months,
-    "1year" => :_1_Year,
-    "18months" => :_18_Months,
-    "2years" => :_2_Years,
-    "3years" => :_3_Years,
-    "4years" => :_4_Years,
-    "5years" => :_5_Years,
+    "Variable floating" => :floating,
+    "6months" => :_6_months,
+    "1year" => :_1_year,
+    "18months" => :_18_months,
+    "2years" => :_2_years,
+    "3years" => :_3_years,
+    "4years" => :_4_years,
+    "5years" => :_5_years,
 )
 
 df = DataFrame(
-    Bank = [r["Institution"] for r in rows_1],
-    Product = [r["Product"] for r in rows_1],
+    bank = [r["Institution"] for r in rows_1],
+    product = [r["Product"] for r in rows_1],
 )
 for (src, dst) in col_rename
     df[!, dst] = [parse_rate(get(r, src, "")) for r in rows_1]
@@ -87,8 +87,8 @@ end
 
 data_cols = collect(values(col_rename))
 filter!(r -> any(!ismissing, [r[c] for c in data_cols]), df)
-unique!(df, [:Bank, :Product])
+unique!(df, [:bank, :product])
 
 const c = LibPQ.Connection(ENV["NEON_DB"])
-insert_if_not_exists(c, df, ["Date", "Bank", "Product"], "ins_mortgage_rate")
+insert_if_not_exists(c, df, ["date", "bank", "product"], "ins_mortgage_rate")
 close(c)

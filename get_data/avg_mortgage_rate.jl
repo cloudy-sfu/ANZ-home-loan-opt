@@ -14,14 +14,14 @@ chart_id, series_names_raw = get_chart_and_series(
 mortgage_all = get_chart_data(chart_id)
 
 series_renamer = [
-    "Floating" => r"^Floating",
-    "_6_Months" => r"^6 months",
-    "_1_Year" => r"^1 year",
-    "_18_Months" => r"^18 months",
-    "_2_Years" => r"^2 year",
-    "_3_Years" => r"^3 year",
-    "_4_Years" => r"^4 year",
-    "_5_Years" => r"^5 year",
+    "floating" => r"^Floating",
+    "_6_months" => r"^6 months",
+    "_1_year" => r"^1 year",
+    "_18_months" => r"^18 months",
+    "_2_years" => r"^2 year",
+    "_3_years" => r"^3 year",
+    "_4_years" => r"^4 year",
+    "_5_years" => r"^5 year",
 ]
 
 # Build a DataFrame with date index and one column per term
@@ -38,8 +38,7 @@ for i in 2:length(pieces)
     global mortgage = outerjoin(mortgage, pieces[i]; on=:date)
 end
 sort!(mortgage, :date)
-rename!(mortgage, "date" => "Date")
 
 const c = LibPQ.Connection(ENV["NEON_DB"])
-insert_if_not_exists(c, mortgage, ["Date"], "avg_mortgage_rate")
+insert_if_not_exists(c, mortgage, ["date"], "avg_mortgage_rate")
 close(c)

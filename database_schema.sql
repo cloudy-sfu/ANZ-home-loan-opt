@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 4dfhApGQR5O0lW9Ua7La2wwodxHss5W2XsthkbfaE0Pvj0VJIAfEihCtWYn7swL
+\restrict ZidQ6CwJUTkMcas6wgBhhf3uDpif4iwgRT75nV02TbaLWmmGIvYXRR6Q5h1QzvB
 
 -- Dumped from database version 18.2 (94b8da0)
 -- Dumped by pg_dump version 18.3
@@ -26,15 +26,15 @@ SET default_table_access_method = heap;
 --
 
 CREATE TABLE public.avg_mortgage_rate (
-    "Date" date CONSTRAINT avg_mortgage_rate_date_not_null NOT NULL,
-    "Floating" double precision,
-    "_6_Months" double precision,
-    "_1_Year" double precision,
-    "_18_Months" double precision,
-    "_2_Years" double precision,
-    "_3_Years" double precision,
-    "_4_Years" double precision,
-    "_5_Years" double precision
+    date date NOT NULL,
+    floating double precision,
+    _6_months double precision,
+    _1_year double precision,
+    _18_months double precision,
+    _2_years double precision,
+    _3_years double precision,
+    _4_years double precision,
+    _5_years double precision
 );
 
 
@@ -43,17 +43,17 @@ CREATE TABLE public.avg_mortgage_rate (
 --
 
 CREATE TABLE public.ins_mortgage_rate (
-    "Date" date DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Pacific/Auckland'::text) NOT NULL,
-    "Bank" character varying(32) NOT NULL,
-    "Product" character varying(32) NOT NULL,
-    "_6_Months" double precision,
-    "_1_Year" double precision,
-    "_2_Years" double precision,
-    "_3_Years" double precision,
-    "_4_Years" double precision,
-    "_5_Years" double precision,
-    "_18_Months" double precision,
-    "Floating" double precision
+    date date DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Pacific/Auckland'::text) CONSTRAINT "ins_mortgage_rate_Date_not_null" NOT NULL,
+    bank character varying(32) CONSTRAINT "ins_mortgage_rate_Bank_not_null" NOT NULL,
+    product character varying(32) CONSTRAINT "ins_mortgage_rate_Product_not_null" NOT NULL,
+    _6_months double precision,
+    _1_year double precision,
+    _2_years double precision,
+    _3_years double precision,
+    _4_years double precision,
+    _5_years double precision,
+    _18_months double precision,
+    floating double precision
 );
 
 
@@ -62,8 +62,8 @@ CREATE TABLE public.ins_mortgage_rate (
 --
 
 CREATE TABLE public.ocr (
-    "Date" date CONSTRAINT ocr_date_not_null NOT NULL,
-    "OCR" double precision
+    date date NOT NULL,
+    ocr double precision
 );
 
 
@@ -72,14 +72,14 @@ CREATE TABLE public.ocr (
 --
 
 CREATE TABLE public.wholesale_swap_rate (
-    "Date" date CONSTRAINT wholesale_swap_rate_date_not_null NOT NULL,
-    "_1_Year" double precision,
-    "_2_Years" double precision,
-    "_3_Years" double precision,
-    "_4_Years" double precision,
-    "_5_Years" double precision,
-    "_7_Years" double precision,
-    "_10_Years" double precision
+    date date NOT NULL,
+    _1_year double precision,
+    _2_years double precision,
+    _3_years double precision,
+    _4_years double precision,
+    _5_years double precision,
+    _7_years double precision,
+    _10_years double precision
 );
 
 
@@ -88,7 +88,7 @@ CREATE TABLE public.wholesale_swap_rate (
 --
 
 ALTER TABLE ONLY public.avg_mortgage_rate
-    ADD CONSTRAINT avg_mortgage_rate_pkey PRIMARY KEY ("Date");
+    ADD CONSTRAINT avg_mortgage_rate_pkey PRIMARY KEY (date);
 
 
 --
@@ -96,7 +96,7 @@ ALTER TABLE ONLY public.avg_mortgage_rate
 --
 
 ALTER TABLE ONLY public.ins_mortgage_rate
-    ADD CONSTRAINT constraint_1 PRIMARY KEY ("Date", "Bank", "Product");
+    ADD CONSTRAINT constraint_1 PRIMARY KEY (date, bank, product);
 
 
 --
@@ -104,7 +104,7 @@ ALTER TABLE ONLY public.ins_mortgage_rate
 --
 
 ALTER TABLE ONLY public.ocr
-    ADD CONSTRAINT ocr_pkey PRIMARY KEY ("Date");
+    ADD CONSTRAINT ocr_pkey PRIMARY KEY (date);
 
 
 --
@@ -112,12 +112,12 @@ ALTER TABLE ONLY public.ocr
 --
 
 ALTER TABLE ONLY public.wholesale_swap_rate
-    ADD CONSTRAINT wholesale_swap_rate_pkey PRIMARY KEY ("Date");
+    ADD CONSTRAINT wholesale_swap_rate_pkey PRIMARY KEY (date);
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 4dfhApGQR5O0lW9Ua7La2wwodxHss5W2XsthkbfaE0Pvj0VJIAfEihCtWYn7swL
+\unrestrict ZidQ6CwJUTkMcas6wgBhhf3uDpif4iwgRT75nV02TbaLWmmGIvYXRR6Q5h1QzvB
 

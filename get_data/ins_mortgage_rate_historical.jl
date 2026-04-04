@@ -4,14 +4,14 @@ include(joinpath(pwd(), "postgresql_ops.jl"))
 using .PostgresqlOps
 
 const TERM_TO_COL = Dict{String,Symbol}(
-    "6 months"          => :_6_Months,
-    "1 year"            => :_1_Year,
-    "18 months"         => :_18_Months,
-    "2 years"           => :_2_Years,
-    "3 years"           => :_3_Years,
-    "4 years"           => :_4_Years,
-    "5 years"           => :_5_Years,
-    "Variable floating" => :Floating,
+    "6 months"          => :_6_months,
+    "1 year"            => :_1_year,
+    "18 months"         => :_18_months,
+    "2 years"           => :_2_years,
+    "3 years"           => :_3_years,
+    "4 years"           => :_4_years,
+    "5 years"           => :_5_years,
+    "Variable floating" => :floating,
 )
 
 const INSTITUTIONS = Dict{String,String}(
@@ -30,7 +30,7 @@ function fetch_mortgage_rates(start_date::String, end_date::String,
 
     df = DataFrame(
         [T[] for T in col_types],
-        [:Date, :Bank, :Product, rate_cols...]
+        [:date, :bank, :product, rate_cols...]
     )
 
     for (inst_id, bank_name) in institutions
@@ -47,9 +47,9 @@ function fetch_mortgage_rates(start_date::String, end_date::String,
             for inst in daily.data
                 for prod in inst.products
                     row = Dict{Symbol,Any}(
-                        :Date    => d,
-                        :Bank    => bank_name,
-                        :Product => String(prod.name),
+                        :date    => d,
+                        :bank    => bank_name,
+                        :product => String(prod.name),
                     )
                     for col in rate_cols
                         row[col] = missing
@@ -65,7 +65,7 @@ function fetch_mortgage_rates(start_date::String, end_date::String,
         end
     end
 
-    sort!(df, [:Date, :Bank, :Product])
+    sort!(df, [:date, :bank, :product])
     rate_col_set = rate_cols
     filter!(r -> any(!ismissing, [r[c] for c in rate_col_set]), df)
     return df
@@ -74,8 +74,8 @@ end
 length(ARGS) >= 2 || error(
     "Usage: julia ins_mortgage_rate_historical.jl $start_date $end_date")
 df = fetch_mortgage_rates(ARGS[1], ARGS[2])
-unique!(df, [:Bank, :Product])
+unique!(df, [:date, :bank, :product])
 
 const c = LibPQ.Connection(ENV["NEON_DB"])
-insert_if_not_exists(c, df, ["Date", "Bank", "Product"], "ins_mortgage_rate")
+insert_if_not_exists(c, df, ["date", "bank", "product"], "ins_mortgage_rate")
 close(c)

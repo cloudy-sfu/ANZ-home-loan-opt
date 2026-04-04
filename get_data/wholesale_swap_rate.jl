@@ -14,13 +14,13 @@ chart_id, series_names_raw = get_chart_and_series(
 swap_rate_all = get_chart_data(chart_id)
 
 series_renamer = [
-    "_1_Year"  => r"^1 year",
-    "_2_Years"  => r"^2 year",
-    "_3_Years"  => r"^3 year",
-    "_4_Years"  => r"^4 year",
-    "_5_Years"  => r"^5 year",
-    "_7_Years"  => r"^7 year",
-    "_10_Years" => r"^10 year",
+    "_1_year"  => r"^1 year",
+    "_2_years"  => r"^2 year",
+    "_3_years"  => r"^3 year",
+    "_4_years"  => r"^4 year",
+    "_5_years"  => r"^5 year",
+    "_7_years"  => r"^7 year",
+    "_10_years" => r"^10 year",
 ]
 
 pieces = DataFrame[]
@@ -38,8 +38,7 @@ for i in 2:length(pieces)
     global swap_rate = outerjoin(swap_rate, pieces[i]; on=:date)
 end
 sort!(swap_rate, :date)
-rename!(swap_rate, "date" => "Date")
 
 const c = LibPQ.Connection(ENV["NEON_DB"])
-insert_if_not_exists(c, swap_rate, ["Date"], "wholesale_swap_rate")
+insert_if_not_exists(c, swap_rate, ["date"], "wholesale_swap_rate")
 close(c)
