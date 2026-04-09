@@ -1,0 +1,36 @@
+import os
+
+from sqlalchemy import create_engine
+
+from get_data.get_interest import *
+from postgresql_upsert import insert_if_not_exists
+
+chart_id, series_names_raw = get_chart_and_series(
+    "https://www.interest.co.nz/charts/interest-rates/mortgage-rates"
+)
+mortgage_all = get_chart_data(chart_id)
+series_renamer = {
+    'floating': get_series_idx(series_names_raw, r"^Floating"),
+    '_6_months': get_series_idx(series_names_raw, r"^6 months"),
+    '_1_year': get_series_idx(series_names_raw, r"^1 year"),
+    '_18_months': get_series_idx(series_names_raw, r"^18 months"),
+    '_2_years': get_series_idx(series_names_raw, r"^2 year"),
+    '_3_years': get_series_idx(series_names_raw, r"^3 year"),
+    '_4_years': get_series_idx(series_names_raw, r"^4 year"),
+    '_5_years': get_series_idx(series_names_raw, r"^5 year"),
+}
+mortgage = []
+for col_name, series_idx in series_renamer.items():
+    mortgage_per = list_to_df(mortgage_all[series_idx], 'day')
+    mortgage_per.set_index('date', inplace=True)
+    mortgage_per.rename({'value': col_name}, axis=1, inplace=True)
+    mortgage.append(mortgage_per)
+mortgage = pd.concat(mortgage, axis=1)
+mortgage.reset_index(inplace=True)
+mortgage = mortgage.convert_dtypes()
+engine = create_engine(os.environ['NEON_DB'])
+insert_if_not_exists(  # upsert because there are multiple time series
+    engine, mortgage,
+    ["date"],
+    "avg_mortgage_rate"
+)

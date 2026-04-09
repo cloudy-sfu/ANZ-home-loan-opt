@@ -1,19 +1,19 @@
 # ANZ home loan opt
 Optimize financial cost under ANZ home loan policy
 
-![](https://shields.io/badge/dependencies-Julia_1.12-purple)
+![](https://shields.io/badge/dependencies-Python_3.14-blue)
 
 ## Install
 
-Install Julia 1.12 and activate the project.
+Create a Python virtual environment and activate.
 
-Environment variables:
+Add the following variables to the environment variables in session level.
 
 | Variable | Description                         |
 | -------- | ----------------------------------- |
 | NEON_DB  | Connection string to Neon database. |
 
-*Define these variables in session level before running any Julia script.*
+
 
 ### Database
 
@@ -44,7 +44,7 @@ Let `$end_date` be the last day (inclusive) of missing data.
 Run the following command.
 
 ```
-julia get_data/ins_mortgage_rate_historical.jl $start_date $end_date
+python get_data/ins_mortgage_rate_historical.py $start_date $end_date
 ```
 
 It only covers partial of the banks.
