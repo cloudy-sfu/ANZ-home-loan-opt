@@ -1,0 +1,225 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: "Segoe UI", system-ui, sans-serif;
+    background: #f4f6f8;
+    color: #1e293b;
+    line-height: 1.6;
+    padding: 2rem;
+    font-size: 1rem;
+}
+
+.form-area {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+.form-area label {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+    font-weight: 500;
+}
+.form-area input[type="number"],
+.form-area input[type="text"],
+.form-area select {
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 5px;
+    font-size: 1rem;
+    background: #fff;
+    transition: border-color 0.15s;
+}
+.form-area input:focus,
+.form-area select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+}
+.form-area input:invalid:not(:placeholder-shown) {
+    border-color: #ef4444;
+}
+.form-area .hint {
+    font-size: 1rem;
+    color: #64748b;
+    margin-top: 0.15rem;
+}
+.form-area .req {
+    color: #ef4444;
+    font-weight: 700;
+}
+.form-area .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem 1.5rem;
+    margin-bottom: 0.7rem;
+}
+.form-area .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.8rem 1.5rem;
+    margin-bottom: 0.7rem;
+}
+.form-area .field {
+    margin-bottom: 0.5rem;
+}
+.form-area .ym {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1.2rem;
+}
+.section h2 {
+    font-size: 1.25rem;
+    color: #334155;
+    margin-bottom: 0.8rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.4rem;
+}
+.section h3 {
+    font-size: 1.1rem;
+    color: #475569;
+    margin: 0.7rem 0 0.5rem;
+}
+
+details.adv {
+    margin-top: 0.8rem;
+    border-top: 1px dashed #cbd5e1;
+    padding-top: 0.6rem;
+}
+details.adv > summary {
+    cursor: pointer;
+    font-size: 1rem;
+    color: #6366f1;
+    font-weight: 600;
+    user-select: none;
+    list-style: none;
+}
+details.adv > summary::before {
+    content: "▸ ";
+}
+details.adv[open] > summary::before {
+    content: "▾ ";
+}
+details.adv .adv-body {
+    padding-top: 0.6rem;
+}
+
+.list-group {
+    margin-bottom: 0.6rem;
+}
+.list-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 0.55rem;
+    position: relative;
+}
+.list-item .item-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.list-item .item-head span {
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #475569;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-add {
+    background: #dbeafe;
+    color: #2563eb;
+    margin-bottom: 0.6rem;
+}
+.btn-add:hover {
+    background: #bfdbfe;
+}
+.btn-del {
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 1rem;
+    padding: 0.35rem 0.7rem;
+}
+.btn-del:hover {
+    background: #fecaca;
+}
+.btn-primary {
+    background: #3b82f6;
+    color: #fff;
+    font-size: 1.05rem;
+    padding: 0.6rem 1.8rem;
+    margin-top: 1rem;
+}
+.btn-primary:hover {
+    background: #2563eb;
+}
+.btn-secondary {
+    background: #e2e8f0;
+    color: #334155;
+    font-size: 1.05rem;
+    padding: 0.6rem 1.4rem;
+    margin-top: 1rem;
+}
+.btn-secondary:hover {
+    background: #cbd5e1;
+}
+
+.page-head {
+    text-align: left;
+    margin-bottom: 1.5rem;
+}
+.page-head h1 {
+    font-size: 1.6rem;
+    color: #1e40af;
+}
+.page-head p {
+    font-size: 1rem;
+    color: #64748b;
+}
+
+.actions {
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.val-msg {
+    display: none;
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fca5a5;
+    border-radius: 6px;
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+    margin-bottom: 0.8rem;
+}
+.val-msg.show {
+    display: block;
+}
