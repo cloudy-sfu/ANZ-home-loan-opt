@@ -1,23 +1,49 @@
-WITH repay_cycle AS (
+WITH date_bounds AS (
+    -- 1. Find boundaries specific to the filtered bank and product
     SELECT
-        *,
-        date_trunc('month', date - :repay_date * INTERVAL '1 day')
-            + INTERVAL '1 month' AS shift_date
-    FROM ins_mortgage_rate
+        MIN(date) AS min_date,
+        MAX(date) AS max_date
+    FROM public.ins_mortgage_rate
     WHERE bank = :bank
-      AND product = :product
+      AND (
+          (:special = TRUE  AND product LIKE 'Special%') OR
+          (:special = FALSE AND product = 'Standard')
+      )
+),
+fridays AS (
+    -- Extract the generate_series into a FROM clause so we can filter its output
+    SELECT f_date::date AS target_friday
+    FROM date_bounds,
+         generate_series(
+             (date_trunc('week', min_date) + interval '4 days')::date,
+             max_date,
+             interval '1 week'
+         ) AS f_date
+    WHERE f_date::date >= min_date -- <-- THIS PREVENTS THE INITIAL NULL ROW
+      AND min_date IS NOT NULL
 )
+-- 3. As Of Join applied to the specific filtered parameters
 SELECT
-    EXTRACT(YEAR  FROM shift_date) AS year,
-    EXTRACT(MONTH FROM shift_date) AS month,
-    (array_agg(floating   ORDER BY date DESC) FILTER (WHERE floating   IS NOT NULL))[1] AS floating,
-    (array_agg(_6_months  ORDER BY date DESC) FILTER (WHERE _6_months  IS NOT NULL))[1] AS _6_months,
-    (array_agg(_1_year    ORDER BY date DESC) FILTER (WHERE _1_year    IS NOT NULL))[1] AS _1_year,
-    (array_agg(_18_months ORDER BY date DESC) FILTER (WHERE _18_months IS NOT NULL))[1] AS _18_months,
-    (array_agg(_2_years   ORDER BY date DESC) FILTER (WHERE _2_years   IS NOT NULL))[1] AS _2_years,
-    (array_agg(_3_years   ORDER BY date DESC) FILTER (WHERE _3_years   IS NOT NULL))[1] AS _3_years,
-    (array_agg(_4_years   ORDER BY date DESC) FILTER (WHERE _4_years   IS NOT NULL))[1] AS _4_years,
-    (array_agg(_5_years   ORDER BY date DESC) FILTER (WHERE _5_years   IS NOT NULL))[1] AS _5_years
-FROM repay_cycle
-GROUP BY year, month
-ORDER BY year, month;
+    f.target_friday AS date,
+    r.floating,
+    r._6_months,
+    r._1_year,
+    r._18_months,
+    r._2_years,
+    r._3_years,
+    r._4_years,
+    r._5_years
+FROM fridays f
+LEFT JOIN LATERAL (
+    SELECT *
+    FROM public.ins_mortgage_rate imr
+    WHERE imr.bank = :bank
+      AND (
+          (:special = TRUE  AND imr.product LIKE 'Special%') OR
+          (:special = FALSE AND imr.product = 'Standard')
+      )
+      AND imr.date <= f.target_friday
+    ORDER BY imr.date DESC
+    LIMIT 1
+) r ON true
+ORDER BY f.target_friday;
