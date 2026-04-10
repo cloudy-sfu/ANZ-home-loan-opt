@@ -16,7 +16,7 @@ fridays AS (
     FROM date_bounds,
          generate_series(
              (date_trunc('week', min_date) + interval '4 days')::date,
-             max_date,
+             (date_trunc('week', max_date) + interval '4 days')::date,
              interval '1 week'
          ) AS f_date
     WHERE f_date::date >= min_date -- <-- THIS PREVENTS THE INITIAL NULL ROW

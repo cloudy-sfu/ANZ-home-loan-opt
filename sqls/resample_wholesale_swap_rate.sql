@@ -3,7 +3,7 @@ WITH date_bounds AS (
     SELECT
         MIN(date) AS min_date,
         MAX(date) AS max_date
-    FROM public.avg_mortgage_rate
+    FROM public.wholesale_swap_rate
 ),
 fridays AS (
     -- Extract the generate_series into a FROM clause so we can filter its output
@@ -20,18 +20,17 @@ fridays AS (
 -- 3. Perform the "As Of" Join using LATERAL
 SELECT
     f.target_friday as date,
-    r.floating,
-    r._6_months,
     r._1_year,
-    r._18_months,
     r._2_years,
     r._3_years,
     r._4_years,
-    r._5_years
+    r._5_years,
+    r._7_years,
+    r._10_years
 FROM fridays f
 LEFT JOIN LATERAL (
     SELECT *
-    FROM public.avg_mortgage_rate amr
+    FROM public.wholesale_swap_rate amr
     WHERE amr.date <= f.target_friday
     ORDER BY amr.date DESC
     LIMIT 1

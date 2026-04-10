@@ -5,7 +5,7 @@ import pandas as pd
 import statsmodels.api as sm
 from sqlalchemy import create_engine, text
 
-# %%
+# %% Load data.
 engine = create_engine(os.environ['NEON_DB'], pool_recycle=300)
 with open("sqls/resample_avg_mortgage_rate.sql") as f:
     sql_avg = f.read()
@@ -22,7 +22,6 @@ with engine.connect() as c:
         'special': True
     })
 
-# %%
 avg = avg.convert_dtypes()
 anz_standard = anz_standard.convert_dtypes()
 anz_special = anz_special.convert_dtypes()
@@ -30,21 +29,22 @@ anz_special = anz_special.convert_dtypes()
 anz_standard = anz_standard.dropna(axis=1, how='all')
 anz_special = anz_special.dropna(axis=1, how='all')
 
-avg = avg.ffill()
-anz_standard = anz_standard.ffill()
-anz_special = anz_special.ffill()
-
 avg.set_index('date', inplace=True)
 anz_standard.set_index('date', inplace=True)
 anz_special.set_index('date', inplace=True)
 
-# %%
+# %% Fill missing value.
+avg = avg.bfill()
+anz_standard = anz_standard.bfill()
+anz_special = anz_special.bfill()
+
+# %% Align average and instance.
 xy_standard = pd.merge(avg, anz_standard, how='inner', left_index=True, right_index=True,
                        suffixes=('_avg', '_anz'))
 xy_special = pd.merge(avg, anz_special, how='inner', left_index=True, right_index=True,
                       suffixes=('_avg', '_anz'))
 
-# %%
+# %% Hypothesis testing on ANZ standard.
 slope_one = []
 fig, ax = plt.subplots(figsize=(11, 8))
 colors = plt.get_cmap('tab10')
@@ -94,7 +94,7 @@ ax.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.savefig("results/anz_standard_univariate.pdf")
 
-# %%
+# %% Hypothesis testing on ANZ special.
 fig, ax = plt.subplots(figsize=(11, 8))
 handles = []
 labels = []
@@ -142,6 +142,6 @@ ax.legend(handles, labels, bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.savefig("results/anz_special_univariate.pdf")
 
-# %%
+# %% Export.
 slope_one = pd.DataFrame(slope_one)
 slope_one.to_csv("results/slope_is_1_univariate.csv", index=False)
