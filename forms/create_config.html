@@ -4,11 +4,11 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Mortgage Repayment Optimizer Configuration</title>
-
         <link rel="stylesheet" type="text/css" href="./style.css" />
     </head>
     <body>
         <div class="form-area">
+            <!-- ── page head (static, no form data) ── -->
             <div class="page-head">
                 <h1>Mortgage Repayment Optimizer Configuration</h1>
                 <p>Fields marked <span class="req">*</span> are required.</p>
@@ -32,246 +32,94 @@
 
             <div id="valMsg" class="val-msg"></div>
 
-            <form id="mortgageForm" novalidate>
-                <div class="section">
-                    <h2>1. Revenue</h2>
-
-                    <div class="row">
-                        <div class="field">
-                            <label>Repayment Date of Month <span class="req">*</span></label>
-                            <input type="number" id="d" min="1" max="31" step="1" required />
-                        </div>
-                        <div class="field">
-                            <label>Total Loan Amount (NZD) <span class="req">*</span></label>
-                            <input type="text" id="totalLoanDisplay" readonly style="background: #f1f5f9" required />
-                            <div class="hint">Auto-calculated from the loan parts in "Loan Structure" section.</div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="field">
-                            <label>Prediction Start <span class="req">*</span></label>
-                            <div class="ym">
-                                <input type="number" id="startYear" step="1" required />
-                                <select id="startMonth" required></select>
-                            </div>
-                            <div class="hint">The year and month when the optimisation begins.</div>
-                        </div>
-                        <div class="field">
-                            <label>Loan to Value Ratio <span class="req">*</span></label>
-                            <select id="lvr" required>
-                                <option value="true">Yes</option>
-                                <option value="false" selected>No</option>
-                            </select>
-                            <div class="hint">
-                                <a
-                                    href="https://www.anz.co.nz/personal/home-loans-mortgages/loan-types/fixed/"
-                                    target="_blank"
-                                    >Special interest rate</a
-                                >
-                                requires minimum 20% equity and an ANZ transaction account with salary direct credited
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="field">
-                            <label>Disposable Balance (NZD) <span class="req">*</span></label>
-                            <input type="number" id="c0" min="0" step="0.01" value="0" required />
-                            <div class="hint">Account bank balance that can be used to repay home loan.</div>
-                        </div>
-                        <div class="field">
-                            <label>Current Monthly Disposable Income (NZD) <span class="req">*</span></label>
-                            <input type="number" id="s0" step="0.01" required />
-                            <div class="hint">
-                                Monthly surplus after tax, necessities, and living expenses. Can be negative if expenses
-                                exceed income.
-                            </div>
-                        </div>
-                    </div>
-
-                    <details class="adv">
-                        <summary>Advanced</summary>
-                        <div class="adv-body">
-                            <div class="row">
-                                <div class="field">
-                                    <label>Prediction Horizon (months) <span class="req">*</span></label>
-                                    <input type="number" id="T" min="1" max="600" step="1" value="60" required />
-                                    <div class="hint">
-                                        How many months into the future the optimiser evaluates. Default 60 (5 years).
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h3>Future Income Changes</h3>
-                            <button type="button" class="btn btn-add" onclick="addSalaryChange()">
-                                + Add Income Change
-                            </button>
-                            <div class="list-group" id="salaryChangesList"></div>
-
-                            <h3>One-Off Extra Income</h3>
-                            <p style="font-size: 1rem; color: #64748b; margin-bottom: 0.4rem">
-                                Lump sums you expect to receive, such as bonuses, tax refunds, or gifts.
-                            </p>
-                            <button type="button" class="btn btn-add" onclick="addOneOff()">
-                                + Add One-Off Income
-                            </button>
-                            <div class="list-group" id="oneOffList"></div>
-                        </div>
-                    </details>
-                </div>
-
-                <div class="section">
-                    <h2>2. Loan Structure</h2>
-                    <p style="font-size: 1rem; color: #64748b; margin-bottom: 0.6rem">
-                        Describe each part of your loan. For a simple loan with no splits, one part is enough.
-                    </p>
-
-                    <button type="button" class="btn btn-add" id="btnAddSubloan" onclick="addSubloan()">
-                        + Add Loan Part
-                    </button>
-                    <div class="list-group" id="subloanList"></div>
-                </div>
-
-                <div class="section">
-                    <h2>3. Bank Policy</h2>
-                    <p style="font-size: 1rem; color: #64748b; margin-bottom: 0.6rem">
-                        Settings that depend on your bank's terms and conditions. Check your loan agreement or ask your
-                        bank. Defaults are pre-filled for typical NZ bank policies.
-                    </p>
-                    <details class="adv">
-                        <summary>Advanced</summary>
-                        <div class="adv-body">
-                            <div class="row">
-                                <div class="field">
-                                    <label>Max Loan Parts <span class="req">*</span></label>
-                                    <input type="number" id="N" min="1" max="20" step="1" value="4" required />
-                                    <div class="hint">
-                                        Maximum number of loan splits your bank allows at the same time.
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label>Restructure Fee (NZD) <span class="req">*</span></label>
-                                    <input type="number" id="phi" min="0" step="0.01" value="0" required />
-                                    <div class="hint">
-                                        Flat admin fee charged each time you break or restructure a loan part.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="row">
-                                <div class="field">
-                                    <label>Penalty-Free Lump Sum (%) <span class="req">*</span></label>
-                                    <input type="number" id="alpha" min="0" max="100" step="0.01" value="5" required />
-                                    <div class="hint">
-                                        Each year, you can make extra repayments up to this percentage of the
-                                        anniversary balance without penalty.
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label>Penalty-Free Payment Increase (NZD) <span class="req">*</span></label>
-                                    <input type="number" id="beta" min="0" step="0.01" value="1071" required />
-                                    <div class="hint">
-                                        The most you can raise your regular payment by each anniversary year without
-                                        triggering a fee.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <h3>Cashback</h3>
-                            <div class="row">
-                                <div class="field">
-                                    <label>Cashback (%) <span class="req">*</span></label>
-                                    <input type="number" id="gamma" min="0" max="100" step="0.01" value="0" required />
-                                    <div class="hint">
-                                        Percentage of your loan the bank pays you as a cash incentive at drawdown.
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label>Clawback Period (months) <span class="req">*</span></label>
-                                    <input type="number" id="tau" min="0" step="1" value="36" required />
-                                    <div class="hint">
-                                        If you repay the entire loan within this many months, you must return some or
-                                        all of the cashback.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="field">
-                                    <label>Clawback Type <span class="req">*</span></label>
-                                    <select id="theta" required>
-                                        <option value="0">Full — return all cashback</option>
-                                        <option value="1">Pro-rata — return remaining fraction</option>
-                                    </select>
-                                    <div class="hint">
-                                        Full: repay entire cashback. Pro-rata: repay only for the unused portion of the
-                                        clawback period.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                </div>
-
-                <div class="section">
-                    <h2>4. Solver Settings</h2>
-                    <p style="font-size: 1rem; color: #64748b; margin-bottom: 0.6rem">
-                        Tuning parameters for the optimisation engine. Defaults are pre-filled and work well for most
-                        cases.
-                    </p>
-
-                    <details class="adv">
-                        <summary>Advanced</summary>
-                        <div class="adv-body">
-                            <div class="row">
-                                <div class="field">
-                                    <label>Bankruptcy Penalty Weight <span class="req">*</span></label>
-                                    <input type="number" id="Omega" min="0" step="1" value="1000000" required />
-                                    <div class="hint">
-                                        A very large cost applied when cash runs out, forcing the solver to avoid
-                                        bankruptcy. Higher = stronger avoidance.
-                                    </div>
-                                </div>
-                                <div class="field">
-                                    <label>Interest Decay Factor <span class="req">*</span></label>
-                                    <input
-                                        type="number"
-                                        id="zeta"
-                                        min="0.01"
-                                        max="0.99"
-                                        step="0.01"
-                                        value="0.55"
-                                        required
-                                    />
-                                    <div class="hint">
-                                        Approximates how total interest shrinks as principal is repaid over time.
-                                        Typically 0.55–0.60 for standard mortgages.
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                </div>
-
-                <div class="actions">
-                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
-                    <button type="button" class="btn btn-primary" onclick="exportJSON()">Export Config</button>
-                </div>
-            </form>
+            <!-- form is kept as a shell; sections are injected by JS -->
+            <form id="mortgageForm" novalidate></form>
         </div>
 
         <script>
             // Ref: model_definition.md — variable mappings for f_{i,0}, u_{i,0}, xi_{i,0}, a_{i,0}
-
-            const MONTH_OPTS = `<option value=""></option>
-<option value="1">1</option><option value="2">2</option><option value="3">3</option>
-<option value="4">4</option><option value="5">5</option><option value="6">6</option>
-<option value="7">7</option><option value="8">8</option><option value="9">9</option>
-<option value="10">10</option><option value="11">11</option><option value="12">12</option>`;
+            // Ref: https://developer.mozilla.org/en-US/docs/Web/API/Document/createElement
 
             let subloanIdx = 0;
             let salaryIdx = 0;
             let oneoffIdx = 0;
+
+            // ── DOM helpers ───────────────────────────────────────────
+            function el(tag, attrs = {}, ...children) {
+                const node = document.createElement(tag);
+                for (const [k, v] of Object.entries(attrs)) {
+                    if (v === null || v === undefined) continue;
+                    if (k === "class") node.className = v;
+                    else if (k.startsWith("on")) node.addEventListener(k.slice(2).toLowerCase(), v);
+                    else if (k === "style" && typeof v === "object") Object.assign(node.style, v);
+                    else node.setAttribute(k, v);
+                }
+                for (const c of children) {
+                    if (c === null || c === undefined) continue;
+                    node.append(typeof c === "string" ? c : c);
+                }
+                return node;
+            }
+
+            function monthSelect(id) {
+                const attrs = { required: "required" };
+                if (id) attrs.id = id;
+                const sel = el("select", attrs);
+                sel.append(el("option", { value: "" }));
+                for (let m = 1; m <= 12; m++) {
+                    sel.append(el("option", { value: String(m) }, String(m)));
+                }
+                return sel;
+            }
+
+            function fieldGroup(labelText, inputNode, hint, required = true) {
+                return el(
+                    "div",
+                    { class: "field" },
+                    el(
+                        "label",
+                        {},
+                        labelText + " ",
+                        required ? el("span", { class: "req" }, "*") : null
+                    ),
+                    inputNode,
+                    hint ? el("div", { class: "hint" }, hint) : null
+                );
+            }
+
+            function fieldGroupHTML(labelText, inputNode, hintHTML, required = true) {
+                const f = el(
+                    "div",
+                    { class: "field" },
+                    el(
+                        "label",
+                        {},
+                        labelText + " ",
+                        required ? el("span", { class: "req" }, "*") : null
+                    ),
+                    inputNode
+                );
+                if (hintHTML) {
+                    const d = el("div", { class: "hint" });
+                    d.innerHTML = hintHTML;
+                    f.append(d);
+                }
+                return f;
+            }
+
+            function ymField(labelText, yearInput, monthSel, hint) {
+                return el(
+                    "div",
+                    { class: "field" },
+                    el("label", {}, labelText),
+                    el("div", { class: "ym" }, yearInput, monthSel),
+                    hint ? el("div", { class: "hint" }, hint) : null
+                );
+            }
+
+            function sectionDesc(text) {
+                return el("p", { style: { fontSize: "1rem", color: "#64748b", marginBottom: "0.6rem" } }, text);
+            }
 
             function toNumberOrNull(value) {
                 if (value === "" || value === null || value === undefined) return null;
@@ -284,130 +132,356 @@
                 return n !== null && Number.isInteger(n) ? n : null;
             }
 
-            function subloanHTML(i, isFirst) {
-                return `
-  <div class="list-item" data-sl="${i}">
-    <div class="item-head">
-      <span>Loan Part</span>
-      ${isFirst ? "" : '<button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>'}
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Principal (NZD) <span class="req">*</span></label>
-        <input type="number" class="sl-b" min="0" step="0.01" required>
-        <div class="hint">Outstanding balance of this loan part.</div>
-      </div>
-      <div class="field">
-        <label>Remaining Loan Term (months) <span class="req">*</span></label>
-        <input type="number" class="sl-m" min="0" step="1" required>
-        <div class="hint">How many months until this part is scheduled to be fully repaid.</div>
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Current Regular Payment (NZD)</label>
-        <input type="number" class="sl-p0" min="0" step="0.01" value="">
-        <div class="hint">Most recent monthly payment. Leave blank to let the program auto-calculate by floating interest rate.</div>
-      </div>
-    </div>
+            // ── Section builders ──────────────────────────────────────
 
-    <details class="adv">
-      <summary>Advanced — Existing Fixed-Rate Contract</summary>
-      <div class="adv-body">
-        <p style="font-size:1rem;color:#64748b;margin-bottom:.5rem">
-          Fill these in only if this loan part is currently locked into a fixed rate. For floating-rate or brand-new loans, leave as defaults.
-        </p>
+            function buildRevenueSection() {
+                const sec = el("div", { class: "section" }, el("h2", {}, "1. Revenue"));
+                sec.append(
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Repayment Date of Month",
+                            el("input", { type: "number", id: "d", min: "1", max: "31", step: "1", required: "required" }),
+                            null
+                        ),
+                        fieldGroup(
+                            "Total Loan Amount (NZD)",
+                            el("input", { type: "text", id: "totalLoanDisplay", readonly: "readonly", style: { background: "#f1f5f9" }, required: "required" }),
+                            'Auto-calculated from the loan parts in "Loan Structure" section.'
+                        ),
+                        ymField(
+                            "Prediction Start *",
+                            el("input", { type: "number", id: "startYear", step: "1", required: "required" }),
+                            monthSelect("startMonth"),
+                            "The year and month when the optimisation begins."
+                        ),
+                        fieldGroupHTML(
+                            "Loan to Value Ratio",
+                            el(
+                                "select",
+                                { id: "lvr", required: "required" },
+                                el("option", { value: "true" }, "Yes"),
+                                el("option", { value: "false", selected: "selected" }, "No")
+                            ),
+                            '<a href="https://www.anz.co.nz/personal/home-loans-mortgages/loan-types/fixed/" target="_blank">Special interest rate</a> requires minimum 20% equity and an ANZ transaction account with salary direct credited'
+                        ),
+                        fieldGroup(
+                            "Disposable Balance (NZD)",
+                            el("input", { type: "number", id: "c0", min: "0", step: "0.01", value: "0", required: "required" }),
+                            "Account bank balance that can be used to repay home loan."
+                        ),
+                        fieldGroup(
+                            "Current Monthly Disposable Income (NZD)",
+                            el("input", { type: "number", id: "s0", step: "0.01", required: "required" }),
+                            "Monthly surplus after tax, necessities, and living expenses. Can be negative if expenses exceed income."
+                        )
+                    )
+                );
 
-        <div class="row">
-          <div class="field">
-            <label>Contract Start Date</label>
-            <div class="ym">
-              <input type="number" class="sl-contractYear" step="1">
-              <select class="sl-contractMonth">${MONTH_OPTS}</select>
-            </div>
-            <div class="hint">When you locked in the fixed rate. Used to look up the interbank swap rate for break fee calculation.</div>
-          </div>
-          <div class="field">
-            <label>Fixed Term Length (months)</label>
-            <input type="number" class="sl-f" min="0" step="1" value="0">
-            <div class="hint">Total length of the fixed-rate product (e.g. 12 for a 1-year fix), 0 if floating.</div>
-          </div>
-        </div>
+                // Advanced
+                const advBody = el(
+                    "div",
+                    { class: "adv-body" },
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Prediction Horizon (months)",
+                            el("input", { type: "number", id: "T", min: "1", max: "600", step: "1", value: "60", required: "required" }),
+                            "How many months into the future the optimiser evaluates. Default 60 (5 years)."
+                        )
+                    ),
+                    el("h3", {}, "Future Income Changes"),
+                    el("button", { type: "button", class: "btn btn-add", onClick: addSalaryChange }, "+ Add Income Change"),
+                    el("div", { class: "list-group", id: "salaryChangesList" }),
+                    el("h3", {}, "One-Off Extra Income"),
+                    el("p", { style: { fontSize: "1rem", color: "#64748b", marginBottom: "0.4rem" } }, "Lump sums you expect to receive, such as bonuses, tax refunds, or gifts."),
+                    el("button", { type: "button", class: "btn btn-add", onClick: addOneOff }, "+ Add One-Off Income"),
+                    el("div", { class: "list-group", id: "oneOffList" })
+                );
 
-        <div class="row">
-          <div class="field">
-            <label>Extra Repayments Made This Year (NZD) <span class="req">*</span></label>
-            <input type="number" class="sl-AL" min="0" step="0.01" value="0" required>
-            <div class="hint">Total lump-sum payments already made on this part since the last contract anniversary. Counts toward the penalty-free allowance.</div>
-          </div>
-          <div class="field">
-            <label>Payment Increase Already Used? <span class="req">*</span></label>
-            <select class="sl-AP" required><option value="0">No</option><option value="1">Yes</option></select>
-            <div class="hint">Whether you have already raised the regular payment on this part during the current anniversary year (once per year is penalty-free).</div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="field">
-            <label>Balance at Last Anniversary (NZD)</label>
-            <input type="number" class="sl-a" min="0" step="0.01">
-            <div class="hint">The principal balance when the current anniversary year began. The penalty-free lump-sum allowance is a percentage of this figure. Use current principal if the loan just started. Leave blank to use current principal.</div>
-          </div>
-        </div>
-      </div>
-    </details>
-  </div>`;
+                const details = el("details", { class: "adv" }, el("summary", {}, "Advanced"), advBody);
+                sec.append(details);
+
+                return sec;
             }
 
-            function salaryChangeHTML(i) {
-                return `
-  <div class="list-item" data-sc="${i}">
-    <div class="item-head">
-      <span>Income Change</span>
-      <button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>When <span class="req">*</span></label>
-        <div class="ym">
-          <input type="number" class="sc-year" step="1" required>
-          <select class="sc-month" required>${MONTH_OPTS}</select>
-        </div>
-        <div class="hint">Year and month when the income changes.</div>
-      </div>
-      <div class="field">
-        <label>New Monthly Disposable Income (NZD) <span class="req">*</span></label>
-        <input type="number" class="sc-val" step="0.01" required>
-        <div class="hint">The new amount each month from this point onward, until the next change.</div>
-      </div>
-    </div>
-  </div>`;
+            function buildLoanStructureSection() {
+                return el(
+                    "div",
+                    { class: "section" },
+                    el("h2", {}, "2. Loan Structure"),
+                    sectionDesc("Describe each part of your loan. For a simple loan with no splits, one part is enough."),
+                    el("button", { type: "button", class: "btn btn-add", id: "btnAddSubloan", onClick: addSubloan }, "+ Add Loan Part"),
+                    el("div", { class: "list-group", id: "subloanList" })
+                );
             }
 
-            function oneOffHTML(i) {
-                return `
-  <div class="list-item" data-oo="${i}">
-    <div class="item-head">
-      <span>One-Off Income Event</span>
-      <button type="button" class="btn btn-del" onclick="delItem(this)">✕ Remove</button>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>When <span class="req">*</span></label>
-        <div class="ym">
-          <input type="number" class="oo-year" step="1" required>
-          <select class="oo-month" required>${MONTH_OPTS}</select>
-        </div>
-        <div class="hint">Year and month you expect to receive this income.</div>
-      </div>
-      <div class="field">
-        <label>Amount (NZD) <span class="req">*</span></label>
-        <input type="number" class="oo-val" min="0" step="0.01" required>
-      </div>
-    </div>
-  </div>`;
+            function buildBankPolicySection() {
+                const sec = el(
+                    "div",
+                    { class: "section" },
+                    el("h2", {}, "3. Bank Policy"),
+                    sectionDesc("Settings that depend on your bank's terms and conditions. Check your loan agreement or ask your bank. Defaults are pre-filled for typical NZ bank policies.")
+                );
+
+                const advBody = el(
+                    "div",
+                    { class: "adv-body" },
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Max Loan Parts",
+                            el("input", { type: "number", id: "N", min: "1", max: "20", step: "1", value: "4", required: "required" }),
+                            "Maximum number of loan splits your bank allows at the same time."
+                        ),
+                        fieldGroup(
+                            "Restructure Fee (NZD)",
+                            el("input", { type: "number", id: "phi", min: "0", step: "0.01", value: "0", required: "required" }),
+                            "Flat admin fee charged each time you break or restructure a loan part."
+                        ),
+                        fieldGroup(
+                            "Penalty-Free Lump Sum (%)",
+                            el("input", { type: "number", id: "alpha", min: "0", max: "100", step: "0.01", value: "5", required: "required" }),
+                            "Each year, you can make extra repayments up to this percentage of the anniversary balance without penalty."
+                        ),
+                        fieldGroup(
+                            "Penalty-Free Payment Increase (NZD)",
+                            el("input", { type: "number", id: "beta", min: "0", step: "0.01", value: "1071", required: "required" }),
+                            "The most you can raise your regular payment by each anniversary year without triggering a fee."
+                        )
+                    ),
+                    el("h3", {}, "Cashback"),
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Cashback (%)",
+                            el("input", { type: "number", id: "gamma", min: "0", max: "100", step: "0.01", value: "0", required: "required" }),
+                            "Percentage of your loan the bank pays you as a cash incentive at drawdown."
+                        ),
+                        fieldGroup(
+                            "Clawback Period (months)",
+                            el("input", { type: "number", id: "tau", min: "0", step: "1", value: "36", required: "required" }),
+                            "If you repay the entire loan within this many months, you must return some or all of the cashback."
+                        ),
+                        fieldGroup(
+                            "Clawback Type",
+                            el(
+                                "select",
+                                { id: "theta", required: "required" },
+                                el("option", { value: "0" }, "Full — return all cashback"),
+                                el("option", { value: "1" }, "Pro-rata — return remaining fraction")
+                            ),
+                            "Full: repay entire cashback. Pro-rata: repay only for the unused portion of the clawback period."
+                        )
+                    )
+                );
+
+                sec.append(el("details", { class: "adv" }, el("summary", {}, "Advanced"), advBody));
+                return sec;
             }
 
-            // ── Add / delete helpers ──────────────────────────────────
+            function buildSolverSection() {
+                const sec = el(
+                    "div",
+                    { class: "section" },
+                    el("h2", {}, "4. Solver Settings"),
+                    sectionDesc("Tuning parameters for the optimisation engine. Defaults are pre-filled and work well for most cases.")
+                );
+
+                const advBody = el(
+                    "div",
+                    { class: "adv-body" },
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Bankruptcy Penalty Weight",
+                            el("input", { type: "number", id: "Omega", min: "0", step: "1", value: "1000000", required: "required" }),
+                            "A very large cost applied when cash runs out, forcing the solver to avoid bankruptcy. Higher = stronger avoidance."
+                        ),
+                        fieldGroup(
+                            "Interest Decay Factor",
+                            el("input", { type: "number", id: "zeta", min: "0.01", max: "0.99", step: "0.01", value: "0.55", required: "required" }),
+                            "Approximates how total interest shrinks as principal is repaid over time. Typically 0.55–0.60 for standard mortgages."
+                        )
+                    )
+                );
+
+                sec.append(el("details", { class: "adv" }, el("summary", {}, "Advanced"), advBody));
+                return sec;
+            }
+
+            function buildActions() {
+                return el(
+                    "div",
+                    { class: "actions" },
+                    el("button", { type: "button", class: "btn btn-secondary", onClick: resetForm }, "Reset"),
+                    el("button", { type: "button", class: "btn btn-primary", onClick: exportJSON }, "Export Config")
+                );
+            }
+
+            // ── Dynamic-list item builders (unchanged logic) ──────────
+
+            function removeBtn(listItem) {
+                return el(
+                    "button",
+                    { type: "button", class: "btn btn-del", onClick: () => listItem.remove() },
+                    "✕ Remove"
+                );
+            }
+
+            function createSubloan(i, isFirst) {
+                const refs = {
+                    b: el("input", { type: "number", min: "0", step: "0.01", required: "required" }),
+                    m: el("input", { type: "number", min: "0", step: "1", required: "required" }),
+                    p0: el("input", { type: "number", min: "0", step: "0.01" }),
+                    contractYear: el("input", { type: "number", step: "1" }),
+                    contractMonth: monthSelect(null),
+                    f: el("input", { type: "number", min: "0", step: "1", value: "0" }),
+                    AL: el("input", { type: "number", min: "0", step: "0.01", value: "0", required: "required" }),
+                    AP: el(
+                        "select",
+                        { required: "required" },
+                        el("option", { value: "0" }, "No"),
+                        el("option", { value: "1" }, "Yes")
+                    ),
+                    a: el("input", { type: "number", min: "0", step: "0.01" }),
+                };
+
+                refs.contractMonth.removeAttribute("required");
+                refs.b.addEventListener("input", updateTotalLoan);
+
+                const node = el(
+                    "div",
+                    { class: "list-item", "data-sl": String(i) },
+                    el("div", { class: "item-head" }, el("span", {}, "Loan Part")),
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Principal (NZD)", 
+                            refs.b, 
+                            "Outstanding balance of this loan part."
+                        ),
+                        fieldGroup(
+                            "Remaining Loan Term (months)", 
+                            refs.m, 
+                            "How many months until this part is scheduled to be fully repaid."
+                        ),
+                        fieldGroup(
+                            "Current Regular Payment (NZD)", 
+                            refs.p0, 
+                            "Most recent monthly payment. Leave blank to let the program auto-calculate by floating interest rate.", 
+                            false
+                        )
+                    )
+                );
+
+                if (!isFirst) {
+                    node.querySelector(".item-head").append(
+                        el("button", { type: "button", class: "btn btn-del", onClick: () => { node.remove(); updateTotalLoan(); } }, "✕ Remove")
+                    );
+                }
+
+                const advBody = el(
+                    "div",
+                    { class: "adv-body" },
+                    el("p", { style: { fontSize: "1rem", color: "#64748b", marginBottom: ".5rem" } }, "Fill these in only if this loan part is currently locked into a fixed rate. For floating-rate or brand-new loans, leave as defaults."),
+                    el(
+                        "div",
+                        { class: "row" },
+                        ymField(
+                            "Contract Start Date", 
+                            refs.contractYear, refs.contractMonth, 
+                            "When you locked in the fixed rate. Used to look up the interbank swap rate for break fee calculation."
+                        ),
+                        fieldGroup(
+                            "Fixed Term Length (months)", 
+                            refs.f, 
+                            "Total length of the fixed-rate product (e.g. 12 for a 1-year fix), 0 if floating.", 
+                            false
+                        ),
+                        fieldGroup(
+                            "Extra Repayments Made This Year (NZD)", 
+                            refs.AL, 
+                            "Total lump-sum payments already made on this part since the last contract anniversary. Counts toward the penalty-free allowance."
+                        ),
+                        fieldGroup(
+                            "Payment Increase Already Used?", 
+                            refs.AP, 
+                            "Whether you have already raised the regular payment on this part during the current anniversary year (once per year is penalty-free)."
+                        ),
+                        fieldGroup(
+                            "Balance at Last Anniversary (NZD)", 
+                            refs.a, 
+                            "The principal balance when the current anniversary year began. The penalty-free lump-sum allowance is a percentage of this figure. Use current principal if the loan just started. Leave blank to use current principal.", 
+                            false
+                        )
+                    )
+                );
+
+                node.append(el("details", { class: "adv" }, el("summary", {}, "Advanced — Existing Fixed-Rate Contract"), advBody));
+                node.refs = refs;
+                return node;
+            }
+
+            function createSalaryChange(i) {
+                const refs = {
+                    year: el("input", { type: "number", step: "1", required: "required" }),
+                    month: monthSelect(null),
+                    val: el("input", { type: "number", step: "0.01", required: "required" }),
+                };
+
+                const node = el(
+                    "div",
+                    { class: "list-item", "data-sc": String(i) },
+                    el("div", { class: "item-head" }, el("span", {}, "Income Change")),
+                    el(
+                        "div",
+                        { class: "row" },
+                        ymField("When", refs.year, refs.month, "Year and month when the income changes."),
+                        fieldGroup("New Monthly Disposable Income (NZD)", refs.val, "The new amount each month from this point onward, until the next change.")
+                    )
+                );
+
+                node.querySelector(".item-head").append(
+                    el("button", { type: "button", class: "btn btn-del", onClick: () => node.remove() }, "✕ Remove")
+                );
+                node.refs = refs;
+                return node;
+            }
+
+            function createOneOff(i) {
+                const refs = {
+                    year: el("input", { type: "number", step: "1", required: "required" }),
+                    month: monthSelect(null),
+                    val: el("input", { type: "number", min: "0", step: "0.01", required: "required" }),
+                };
+
+                const node = el(
+                    "div",
+                    { class: "list-item", "data-oo": String(i) },
+                    el("div", { class: "item-head" }, el("span", {}, "One-Off Income Event")),
+                    el(
+                        "div",
+                        { class: "row" },
+                        ymField("When", refs.year, refs.month, "Year and month you expect to receive this income."),
+                        fieldGroup("Amount (NZD)", refs.val, null)
+                    )
+                );
+
+                node.querySelector(".item-head").append(
+                    el("button", { type: "button", class: "btn btn-del", onClick: () => node.remove() }, "✕ Remove")
+                );
+                node.refs = refs;
+                return node;
+            }
+
+            // ── Add helpers ───────────────────────────────────────────
             function addSubloan() {
                 const maxNInput = toIntOrNull(document.getElementById("N").value);
                 const maxN = maxNInput === null ? 20 : maxNInput;
@@ -416,22 +490,15 @@
                     alert("Maximum " + maxN + " loan parts allowed.");
                     return;
                 }
-                const isFirst = list.children.length === 0;
-                list.insertAdjacentHTML("beforeend", subloanHTML(subloanIdx++, isFirst));
+                list.append(createSubloan(subloanIdx++, list.children.length === 0));
             }
 
             function addSalaryChange() {
-                document
-                    .getElementById("salaryChangesList")
-                    .insertAdjacentHTML("beforeend", salaryChangeHTML(salaryIdx++));
+                document.getElementById("salaryChangesList").append(createSalaryChange(salaryIdx++));
             }
 
             function addOneOff() {
-                document.getElementById("oneOffList").insertAdjacentHTML("beforeend", oneOffHTML(oneoffIdx++));
-            }
-
-            function delItem(btn) {
-                btn.closest(".list-item").remove();
+                document.getElementById("oneOffList").append(createOneOff(oneoffIdx++));
             }
 
             // ── Validation ────────────────────────────────────────────
@@ -442,8 +509,7 @@
                 form.querySelectorAll(":invalid").forEach((el) => {
                     const lbl =
                         el.closest(".field")?.querySelector("label")?.textContent?.replace(/\*/g, "").trim() ||
-                        el.id ||
-                        "A field";
+                        el.id || "A field";
                     errors.push('"' + lbl + '" is required or has an invalid value.');
                 });
 
@@ -451,8 +517,8 @@
                     errors.push("At least one loan part is required.");
 
                 let sumB = 0;
-                document.querySelectorAll(".sl-b").forEach((el) => {
-                    const principal = toNumberOrNull(el.value);
+                document.querySelectorAll("#subloanList .list-item").forEach((item) => {
+                    const principal = toNumberOrNull(item.refs.b.value);
                     if (principal !== null) sumB += principal;
                 });
                 if (sumB <= 0) errors.push("Total principal across all loan parts must be greater than zero.");
@@ -470,30 +536,27 @@
                 if (!document.getElementById("startYear").value || !document.getElementById("startMonth").value)
                     errors.push("Please select a Prediction Start year and month.");
 
-                // Validate consistency: contract start and fixed term length must both be present or both absent.
-                document.querySelectorAll("#subloanList .list-item").forEach((el, idx) => {
-                    const termLen = toIntOrNull(el.querySelector(".sl-f")?.value);
-                    const cYear = toIntOrNull(el.querySelector(".sl-contractYear")?.value);
-                    const cMonth = toIntOrNull(el.querySelector(".sl-contractMonth")?.value);
+                document.querySelectorAll("#subloanList .list-item").forEach((item) => {
+                    const r = item.refs;
+                    const termLen = toIntOrNull(r.f.value);
+                    const cYear = toIntOrNull(r.contractYear.value);
+                    const cMonth = toIntOrNull(r.contractMonth.value);
 
                     const hasTerm = termLen !== null && termLen > 0;
                     const hasDate = cYear !== null && cMonth !== null && cYear > 0 && cMonth >= 1 && cMonth <= 12;
 
-                    if (hasTerm && !hasDate) {
+                    if (hasTerm && !hasDate)
                         errors.push("A loan part has fixed term length set but contract start date is missing.");
-                    }
-                    if (!hasTerm && hasDate) {
+                    if (!hasTerm && hasDate)
                         errors.push("A loan part has contract start date provided but fixed term length is 0.");
-                    }
 
                     if (hasDate) {
                         const pYear = toIntOrNull(document.getElementById("startYear").value);
                         const pMonth = toIntOrNull(document.getElementById("startMonth").value);
                         if (pYear && pMonth) {
                             const elapsed = (pYear - cYear) * 12 + (pMonth - cMonth);
-                            if (elapsed < 0) {
+                            if (elapsed < 0)
                                 errors.push("A loan part has contract start date after the prediction start date.");
-                            }
                         }
                     }
                 });
@@ -506,14 +569,8 @@
                 const num = (id) => toNumberOrNull(document.getElementById(id).value);
                 const int = (id) => toIntOrNull(document.getElementById(id).value);
 
-                const predStartYear = int("startYear");
-                const predStartMonth = int("startMonth");
-
                 const data = {
-                    prediction_start: {
-                        year: predStartYear,
-                        month: predStartMonth,
-                    },
+                    prediction_start: { year: int("startYear"), month: int("startMonth") },
                     revenue: {
                         repayment_day: int("d"),
                         disposable_balance_nzd: num("c0"),
@@ -539,53 +596,38 @@
                     loan_parts: [],
                 };
 
-                // Income changes
-                document.querySelectorAll("#salaryChangesList .list-item").forEach((el) => {
+                document.querySelectorAll("#salaryChangesList .list-item").forEach((item) => {
+                    const r = item.refs;
                     data.revenue.income_changes.push({
-                        year: toIntOrNull(el.querySelector(".sc-year").value),
-                        month: toIntOrNull(el.querySelector(".sc-month").value),
-                        new_income_nzd: toNumberOrNull(el.querySelector(".sc-val").value),
+                        year: toIntOrNull(r.year.value),
+                        month: toIntOrNull(r.month.value),
+                        new_income_nzd: toNumberOrNull(r.val.value),
                     });
                 });
 
-                // One-off income
-                document.querySelectorAll("#oneOffList .list-item").forEach((el) => {
+                document.querySelectorAll("#oneOffList .list-item").forEach((item) => {
+                    const r = item.refs;
                     data.revenue.income_pulse.push({
-                        year: toIntOrNull(el.querySelector(".oo-year").value),
-                        month: toIntOrNull(el.querySelector(".oo-month").value),
-                        amount_nzd: toNumberOrNull(el.querySelector(".oo-val").value),
+                        year: toIntOrNull(r.year.value),
+                        month: toIntOrNull(r.month.value),
+                        amount_nzd: toNumberOrNull(r.val.value),
                     });
                 });
 
-                // Loan parts
-                document.querySelectorAll("#subloanList .list-item").forEach((el, idx) => {
-                    const principal = toNumberOrNull(el.querySelector(".sl-b").value);
-
-                    const fixedTermLen = toIntOrNull(el.querySelector(".sl-f").value);
-                    const cYear = toIntOrNull(el.querySelector(".sl-contractYear").value);
-                    const cMonth = toIntOrNull(el.querySelector(".sl-contractMonth").value);
-
-                    // default a to principal when blank
-                    const rawA = toNumberOrNull(el.querySelector(".sl-a").value);
-                    const anniversaryBalance = rawA === null ? principal : rawA;
-
-                    const p0 = toNumberOrNull(el.querySelector(".sl-p0").value);
-
-                    const remainingTermMonths = toIntOrNull(el.querySelector(".sl-m").value);
-                    const extraRepaymentsThisYear = toNumberOrNull(el.querySelector(".sl-AL").value);
-                    const paymentIncreaseUsed = toIntOrNull(el.querySelector(".sl-AP").value);
-
+                document.querySelectorAll("#subloanList .list-item").forEach((item) => {
+                    const r = item.refs;
+                    const principal = toNumberOrNull(r.b.value);
+                    const rawA = toNumberOrNull(r.a.value);
                     data.loan_parts.push({
                         principal_nzd: principal,
-                        remaining_term_months: remainingTermMonths,
-                        current_payment_nzd: p0,
-                        // Original user inputs only — server derives f_{i,0} and u_{i,0}
-                        fixed_term_product_months: fixedTermLen,
-                        contract_start_year: cYear,
-                        contract_start_month: cMonth,
-                        extra_repayments_this_year_nzd: extraRepaymentsThisYear,
-                        payment_increase_used: paymentIncreaseUsed,
-                        balance_at_last_anniversary_nzd: anniversaryBalance,
+                        remaining_term_months: toIntOrNull(r.m.value),
+                        current_payment_nzd: toNumberOrNull(r.p0.value),
+                        fixed_term_product_months: toIntOrNull(r.f.value),
+                        contract_start_year: toIntOrNull(r.contractYear.value),
+                        contract_start_month: toIntOrNull(r.contractMonth.value),
+                        extra_repayments_this_year_nzd: toNumberOrNull(r.AL.value),
+                        payment_increase_used: toIntOrNull(r.AP.value),
+                        balance_at_last_anniversary_nzd: rawA === null ? principal : rawA,
                     });
                 });
 
@@ -594,29 +636,17 @@
 
             function updateTotalLoan() {
                 let sum = 0;
-                document.querySelectorAll(".sl-b").forEach((el) => {
-                    const principal = toNumberOrNull(el.value);
-                    if (principal !== null) sum += principal;
+                document.querySelectorAll("#subloanList .list-item").forEach((item) => {
+                    const v = toNumberOrNull(item.refs.b.value);
+                    if (v !== null) sum += v;
                 });
-                document.getElementById("totalLoanDisplay").value = sum.toLocaleString("en-NZ", {
-                    minimumFractionDigits: 2,
-                });
+                document.getElementById("totalLoanDisplay").value = sum.toLocaleString("en-NZ", { minimumFractionDigits: 2 });
             }
-
-            document.getElementById("subloanList").addEventListener("input", (e) => {
-                if (e.target.classList.contains("sl-b")) updateTotalLoan();
-            });
 
             function buildExportFilename() {
                 const now = new Date();
                 const pad = (n) => String(n).padStart(2, "0");
-                const yyyy = now.getFullYear();
-                const mm = pad(now.getMonth() + 1);
-                const dd = pad(now.getDate());
-                const HH = pad(now.getHours());
-                const MM = pad(now.getMinutes());
-                const SS = pad(now.getSeconds());
-                return `config-${yyyy}-${mm}-${dd}-${HH}-${MM}-${SS}.json`;
+                return `config-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.json`;
             }
 
             // ── Export JSON ───────────────────────────────────────────
@@ -626,8 +656,7 @@
                 if (errors.length) {
                     msgEl.innerHTML =
                         "<strong>Please fix the following:</strong><ul>" +
-                        errors.map((e) => "<li>" + e + "</li>").join("") +
-                        "</ul>";
+                        errors.map((e) => "<li>" + e + "</li>").join("") + "</ul>";
                     msgEl.classList.add("show");
                     msgEl.scrollIntoView({ behavior: "smooth", block: "center" });
                     return;
@@ -635,9 +664,7 @@
                 msgEl.classList.remove("show");
 
                 const data = collectData();
-                const jsonStr = JSON.stringify(data, null, 2);
-
-                const blob = new Blob([jsonStr], { type: "application/json;charset=utf-8" });
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json;charset=utf-8" });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
@@ -668,39 +695,26 @@
                     }
 
                     const safeNum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
-                    const safeInt = (v) => {
-                        const n = safeNum(v);
-                        return n !== null && Number.isInteger(n) ? n : null;
-                    };
-                    const setVal = (id, v) => {
-                        if (v !== null && v !== undefined) document.getElementById(id).value = v;
-                    };
+                    const safeInt = (v) => { const n = safeNum(v); return n !== null && Number.isInteger(n) ? n : null; };
+                    const setVal = (id, v) => { if (v !== null && v !== undefined) document.getElementById(id).value = v; };
 
-                    // prediction_start
                     const ps = data.prediction_start;
                     if (ps && typeof ps === "object") {
-                        const y = safeInt(ps.year),
-                            m = safeInt(ps.month);
+                        const y = safeInt(ps.year), m = safeInt(ps.month);
                         if (y) setVal("startYear", y);
                         if (m && m >= 1 && m <= 12) setVal("startMonth", m);
                     }
 
-                    // revenue
                     const uc = data.revenue;
                     if (uc && typeof uc === "object") {
                         if (safeInt(uc.repayment_day) !== null) {
                             const d = safeInt(uc.repayment_day);
                             if (d >= 1 && d <= 31) setVal("d", d);
                         }
-                        if (safeNum(uc.disposable_balance_nzd) !== null)
-                            setVal("c0", safeNum(uc.disposable_balance_nzd));
-                        if (safeNum(uc.monthly_disposable_income_nzd) !== null)
-                            setVal("s0", safeNum(uc.monthly_disposable_income_nzd));
+                        if (safeNum(uc.disposable_balance_nzd) !== null) setVal("c0", safeNum(uc.disposable_balance_nzd));
+                        if (safeNum(uc.monthly_disposable_income_nzd) !== null) setVal("s0", safeNum(uc.monthly_disposable_income_nzd));
                         if (typeof uc.lvr === "boolean") setVal("lvr", String(uc.lvr));
-                        if (
-                            safeInt(uc.prediction_horizon_months) !== null &&
-                            safeInt(uc.prediction_horizon_months) >= 1
-                        )
+                        if (safeInt(uc.prediction_horizon_months) !== null && safeInt(uc.prediction_horizon_months) >= 1)
                             setVal("T", safeInt(uc.prediction_horizon_months));
 
                         if (Array.isArray(uc.income_changes)) {
@@ -708,15 +722,13 @@
                             salaryIdx = 0;
                             uc.income_changes.forEach((ic) => {
                                 if (!ic || typeof ic !== "object") return;
-                                const yr = safeInt(ic.year),
-                                    mo = safeInt(ic.month),
-                                    val = safeNum(ic.new_income_nzd);
+                                const yr = safeInt(ic.year), mo = safeInt(ic.month), val = safeNum(ic.new_income_nzd);
                                 if (!yr || !mo || mo < 1 || mo > 12 || val === null) return;
                                 addSalaryChange();
                                 const item = document.querySelector("#salaryChangesList .list-item:last-child");
-                                item.querySelector(".sc-year").value = yr;
-                                item.querySelector(".sc-month").value = mo;
-                                item.querySelector(".sc-val").value = val;
+                                item.refs.year.value = yr;
+                                item.refs.month.value = mo;
+                                item.refs.val.value = val;
                             });
                         }
 
@@ -725,53 +737,34 @@
                             oneoffIdx = 0;
                             uc.income_pulse.forEach((oo) => {
                                 if (!oo || typeof oo !== "object") return;
-                                const yr = safeInt(oo.year),
-                                    mo = safeInt(oo.month),
-                                    val = safeNum(oo.amount_nzd);
+                                const yr = safeInt(oo.year), mo = safeInt(oo.month), val = safeNum(oo.amount_nzd);
                                 if (!yr || !mo || mo < 1 || mo > 12 || val === null || val < 0) return;
                                 addOneOff();
                                 const item = document.querySelector("#oneOffList .list-item:last-child");
-                                item.querySelector(".oo-year").value = yr;
-                                item.querySelector(".oo-month").value = mo;
-                                item.querySelector(".oo-val").value = val;
+                                item.refs.year.value = yr;
+                                item.refs.month.value = mo;
+                                item.refs.val.value = val;
                             });
                         }
                     }
 
-                    // bank_policy
                     const bp = data.bank_policy;
                     if (bp && typeof bp === "object") {
-                        if (safeInt(bp.max_loan_parts) !== null && safeInt(bp.max_loan_parts) >= 1)
-                            setVal("N", safeInt(bp.max_loan_parts));
+                        if (safeInt(bp.max_loan_parts) !== null && safeInt(bp.max_loan_parts) >= 1) setVal("N", safeInt(bp.max_loan_parts));
                         if (safeNum(bp.restructure_fee_nzd) !== null) setVal("phi", safeNum(bp.restructure_fee_nzd));
-                        if (safeNum(bp.penalty_free_lumpsum_pct) !== null) {
-                            const v = safeNum(bp.penalty_free_lumpsum_pct);
-                            if (v >= 0 && v <= 100) setVal("alpha", v);
-                        }
-                        if (safeNum(bp.penalty_free_payment_increase_nzd) !== null)
-                            setVal("beta", safeNum(bp.penalty_free_payment_increase_nzd));
-                        if (safeNum(bp.cashback_pct) !== null) {
-                            const v = safeNum(bp.cashback_pct);
-                            if (v >= 0 && v <= 100) setVal("gamma", v);
-                        }
-                        if (safeInt(bp.clawback_period_months) !== null)
-                            setVal("tau", safeInt(bp.clawback_period_months));
-                        if (safeInt(bp.clawback_type) !== null && (bp.clawback_type === 0 || bp.clawback_type === 1))
-                            setVal("theta", safeInt(bp.clawback_type));
+                        if (safeNum(bp.penalty_free_lumpsum_pct) !== null) { const v = safeNum(bp.penalty_free_lumpsum_pct); if (v >= 0 && v <= 100) setVal("alpha", v); }
+                        if (safeNum(bp.penalty_free_payment_increase_nzd) !== null) setVal("beta", safeNum(bp.penalty_free_payment_increase_nzd));
+                        if (safeNum(bp.cashback_pct) !== null) { const v = safeNum(bp.cashback_pct); if (v >= 0 && v <= 100) setVal("gamma", v); }
+                        if (safeInt(bp.clawback_period_months) !== null) setVal("tau", safeInt(bp.clawback_period_months));
+                        if (safeInt(bp.clawback_type) !== null && (bp.clawback_type === 0 || bp.clawback_type === 1)) setVal("theta", safeInt(bp.clawback_type));
                     }
 
-                    // solver_settings
                     const ss = data.solver_settings;
                     if (ss && typeof ss === "object") {
-                        if (safeNum(ss.emergency_shortfall_penalty) !== null)
-                            setVal("Omega", safeNum(ss.emergency_shortfall_penalty));
-                        if (safeNum(ss.interest_decay_factor) !== null) {
-                            const v = safeNum(ss.interest_decay_factor);
-                            if (v > 0 && v < 1) setVal("zeta", v);
-                        }
+                        if (safeNum(ss.emergency_shortfall_penalty) !== null) setVal("Omega", safeNum(ss.emergency_shortfall_penalty));
+                        if (safeNum(ss.interest_decay_factor) !== null) { const v = safeNum(ss.interest_decay_factor); if (v > 0 && v < 1) setVal("zeta", v); }
                     }
 
-                    // loan_parts
                     if (Array.isArray(data.loan_parts) && data.loan_parts.length > 0) {
                         document.getElementById("subloanList").innerHTML = "";
                         subloanIdx = 0;
@@ -781,39 +774,19 @@
                             if (!lp || typeof lp !== "object") return;
                             if (idx >= maxN) return;
                             if (safeNum(lp.principal_nzd) === null || safeNum(lp.principal_nzd) < 0) return;
-                            if (safeInt(lp.remaining_term_months) === null || safeInt(lp.remaining_term_months) < 0)
-                                return;
+                            if (safeInt(lp.remaining_term_months) === null || safeInt(lp.remaining_term_months) < 0) return;
                             addSubloan();
                             const item = document.querySelector("#subloanList .list-item:last-child");
-                            item.querySelector(".sl-b").value = safeNum(lp.principal_nzd);
-                            item.querySelector(".sl-m").value = safeInt(lp.remaining_term_months);
-                            if (safeNum(lp.current_payment_nzd) !== null && safeNum(lp.current_payment_nzd) >= 0)
-                                item.querySelector(".sl-p0").value = safeNum(lp.current_payment_nzd);
-
-                            if (
-                                safeInt(lp.fixed_term_product_months) !== null &&
-                                safeInt(lp.fixed_term_product_months) > 0
-                            )
-                                item.querySelector(".sl-f").value = safeInt(lp.fixed_term_product_months);
-                            if (safeInt(lp.contract_start_year) !== null)
-                                item.querySelector(".sl-contractYear").value = safeInt(lp.contract_start_year);
-                            if (safeInt(lp.contract_start_month) !== null)
-                                item.querySelector(".sl-contractMonth").value = safeInt(lp.contract_start_month);
-
-                            if (safeNum(lp.extra_repayments_this_year_nzd) !== null)
-                                item.querySelector(".sl-AL").value = safeNum(lp.extra_repayments_this_year_nzd);
-                            if (
-                                safeInt(lp.payment_increase_used) !== null &&
-                                (lp.payment_increase_used === 0 || lp.payment_increase_used === 1)
-                            )
-                                item.querySelector(".sl-AP").value = safeInt(lp.payment_increase_used);
-                            // only populate if meaningfully different from principal
-                            if (
-                                safeNum(lp.balance_at_last_anniversary_nzd) !== null &&
-                                safeNum(lp.balance_at_last_anniversary_nzd) >= 0 &&
-                                safeNum(lp.balance_at_last_anniversary_nzd) !== safeNum(lp.principal_nzd)
-                            )
-                                item.querySelector(".sl-a").value = safeNum(lp.balance_at_last_anniversary_nzd);
+                            const r = item.refs;
+                            r.b.value = safeNum(lp.principal_nzd);
+                            r.m.value = safeInt(lp.remaining_term_months);
+                            if (safeNum(lp.current_payment_nzd) !== null && safeNum(lp.current_payment_nzd) >= 0) r.p0.value = safeNum(lp.current_payment_nzd);
+                            if (safeInt(lp.fixed_term_product_months) !== null && safeInt(lp.fixed_term_product_months) > 0) r.f.value = safeInt(lp.fixed_term_product_months);
+                            if (safeInt(lp.contract_start_year) !== null) r.contractYear.value = safeInt(lp.contract_start_year);
+                            if (safeInt(lp.contract_start_month) !== null) r.contractMonth.value = safeInt(lp.contract_start_month);
+                            if (safeNum(lp.extra_repayments_this_year_nzd) !== null) r.AL.value = safeNum(lp.extra_repayments_this_year_nzd);
+                            if (safeInt(lp.payment_increase_used) !== null && (lp.payment_increase_used === 0 || lp.payment_increase_used === 1)) r.AP.value = safeInt(lp.payment_increase_used);
+                            if (safeNum(lp.balance_at_last_anniversary_nzd) !== null && safeNum(lp.balance_at_last_anniversary_nzd) >= 0 && safeNum(lp.balance_at_last_anniversary_nzd) !== safeNum(lp.principal_nzd)) r.a.value = safeNum(lp.balance_at_last_anniversary_nzd);
                         });
                         updateTotalLoan();
                     }
@@ -842,7 +815,15 @@
 
             // ── Init ──────────────────────────────────────────────────
             document.addEventListener("DOMContentLoaded", () => {
-                document.getElementById("startMonth").insertAdjacentHTML("beforeend", MONTH_OPTS);
+                const form = document.getElementById("mortgageForm");
+                form.append(
+                    buildRevenueSection(),
+                    buildLoanStructureSection(),
+                    buildBankPolicySection(),
+                    buildSolverSection(),
+                    buildActions()
+                );
+
                 addSubloan();
                 const now = new Date();
                 document.getElementById("startYear").value = now.getFullYear();
