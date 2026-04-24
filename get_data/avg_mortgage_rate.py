@@ -29,7 +29,7 @@ mortgage = pd.concat(mortgage, axis=1)
 mortgage.reset_index(inplace=True)
 mortgage = mortgage.convert_dtypes()
 engine = create_engine(os.environ['NEON_DB'])
-insert_if_not_exists(  # upsert because there are multiple time series
+insert_if_not_exists(
     engine, mortgage,
     ["date"],
     "avg_mortgage_rate"

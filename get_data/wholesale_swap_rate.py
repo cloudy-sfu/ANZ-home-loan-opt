@@ -29,7 +29,7 @@ swap_rate = pd.concat(swap_rate, axis=1)
 swap_rate.reset_index(inplace=True)
 swap_rate = swap_rate.convert_dtypes()
 engine = create_engine(os.environ['NEON_DB'])
-insert_if_not_exists(  # upsert because there are multiple time series
+insert_if_not_exists(
     engine, swap_rate,
     ["date"],
     "wholesale_swap_rate"
