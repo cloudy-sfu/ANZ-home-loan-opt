@@ -37,12 +37,54 @@
         </div>
 
         <script>
-            // Ref: model_definition.md — variable mappings for f_{i,0}, u_{i,0}, xi_{i,0}, a_{i,0}
-            // Ref: https://developer.mozilla.org/en-US/docs/Web/API/Document/createElement
-
             let subloanIdx = 0;
             let salaryIdx = 0;
             let oneoffIdx = 0;
+
+            // ── Unit-conversion helpers ───────────────────────────────
+            const FORTNIGHTS_PER_YEAR = 26;
+            const MONTHS_PER_YEAR = 12;
+
+            const monthlyToFortnightly = (v) => v === null ? null : v * MONTHS_PER_YEAR / FORTNIGHTS_PER_YEAR;
+            const fortnightlyToMonthly = (v) => v === null ? null : v * FORTNIGHTS_PER_YEAR / MONTHS_PER_YEAR;
+
+            const weeklyToFortnightly = (v) => v === null ? null : v * 2;
+            const fortnightlyToWeekly = (v) => v === null ? null : v / 2;
+
+            const annuallyToFortnightly = (v) => v === null ? null : v / FORTNIGHTS_PER_YEAR;
+
+            const monthsToFortnights = (m) => m === null ? null : Math.round(m * FORTNIGHTS_PER_YEAR / MONTHS_PER_YEAR);
+            const fortnightsToMonths = (f) => f === null ? null : Math.round(f * MONTHS_PER_YEAR / FORTNIGHTS_PER_YEAR);
+
+            const yearsToFortnights = (y) => y === null ? null : Math.round(y * FORTNIGHTS_PER_YEAR);
+            const fortnightsToYears = (f) => f === null ? null : f / FORTNIGHTS_PER_YEAR;
+
+            function freqToFortnightly(val, freq) {
+                if (val === null) return null;
+                if (freq === "weekly") return weeklyToFortnightly(val);
+                if (freq === "monthly") return monthlyToFortnightly(val);
+                if (freq === "annually") return annuallyToFortnightly(val);
+                return val; // fortnightly
+            }
+
+            function fortnightlyToFreq(val, freq) {
+                if (val === null) return null;
+                if (freq === "weekly") return fortnightlyToWeekly(val);
+                if (freq === "monthly") return fortnightlyToMonthly(val);
+                if (freq === "annually") return val * FORTNIGHTS_PER_YEAR;
+                return val; // fortnightly
+            }
+
+            const FIXED_TERM_OPTIONS = [
+                { label: "Floating", value: 0 },
+                { label: "6 months", value: 13 },
+                { label: "1 year", value: 26 },
+                { label: "18 months", value: 39 },
+                { label: "2 years", value: 52 },
+                { label: "3 years", value: 78 },
+                { label: "4 years", value: 104 },
+                { label: "5 years", value: 130 },
+            ];
 
             // ── DOM helpers ───────────────────────────────────────────
             function el(tag, attrs = {}, ...children) {
@@ -59,17 +101,6 @@
                     node.append(typeof c === "string" ? c : c);
                 }
                 return node;
-            }
-
-            function monthSelect(id) {
-                const attrs = { required: "required" };
-                if (id) attrs.id = id;
-                const sel = el("select", attrs);
-                sel.append(el("option", { value: "" }));
-                for (let m = 1; m <= 12; m++) {
-                    sel.append(el("option", { value: String(m) }, String(m)));
-                }
-                return sel;
             }
 
             function fieldGroup(labelText, inputNode, hint, required = true) {
@@ -107,16 +138,6 @@
                 return f;
             }
 
-            function ymField(labelText, yearInput, monthSel, hint) {
-                return el(
-                    "div",
-                    { class: "field" },
-                    el("label", {}, labelText),
-                    el("div", { class: "ym" }, yearInput, monthSel),
-                    hint ? el("div", { class: "hint" }, hint) : null
-                );
-            }
-
             function sectionDesc(text) {
                 return el("p", { style: { fontSize: "1rem", color: "#64748b", marginBottom: "0.6rem" } }, text);
             }
@@ -132,49 +153,72 @@
                 return n !== null && Number.isInteger(n) ? n : null;
             }
 
+            function strOrNull(id) {
+                const v = document.getElementById(id).value;
+                return v === "" ? null : v;
+            }
+
+            function isValidISODate(v) {
+                return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(Date.parse(v));
+            }
+
             // ── Section builders ──────────────────────────────────────
 
             function buildRevenueSection() {
-                const sec = el("div", { class: "section" }, el("h2", {}, "1. Revenue"));
+                const sec = el(
+                    "div",
+                    { class: "section" },
+                    el("h2", {}, "1. Revenue"),
+                    sectionDesc("Your starting financial position and the cash flow that funds repayments.")
+                );
+
+                const s0Input = el("input", { type: "number", id: "s0", step: "0.01", required: "required", style: { width: "60%" } });
+                const s0Freq = el(
+                    "select",
+                    { id: "s0Freq", style: { width: "40%" } },
+                    el("option", { value: "weekly" }, "Weekly"),
+                    el("option", { value: "fortnightly" }, "Fortnightly"),
+                    el("option", { value: "monthly", selected: "selected" }, "Monthly")
+                );
+
                 sec.append(
                     el(
                         "div",
                         { class: "row" },
                         fieldGroup(
-                            "Repayment Date of Month",
-                            el("input", { type: "number", id: "d", min: "1", max: "31", step: "1", required: "required" }),
-                            null
+                            "First Repayment Date",
+                            el("input", { type: "date", id: "d0", required: "required" }),
+                            "The reference date of any past or future repayment. Sets the bi-weekly repayment cycle."
                         ),
                         fieldGroup(
                             "Total Loan Amount (NZD)",
                             el("input", { type: "text", id: "totalLoanDisplay", readonly: "readonly", style: { background: "#f1f5f9" }, required: "required" }),
                             'Auto-calculated from the loan parts in "Loan Structure" section.'
                         ),
-                        ymField(
-                            "Prediction Start *",
-                            el("input", { type: "number", id: "startYear", step: "1", required: "required" }),
-                            monthSelect("startMonth"),
-                            "The year and month when the optimisation begins."
+                        fieldGroup(
+                            "Prediction Start Date",
+                            el("input", { type: "date", id: "startDate", required: "required" }),
+                            "The calendar date when the optimisation begins."
                         ),
                         fieldGroupHTML(
-                            "Loan to Value Ratio",
+                            "Equity > 20%",
                             el(
                                 "select",
                                 { id: "lvr", required: "required" },
                                 el("option", { value: "true" }, "Yes"),
                                 el("option", { value: "false", selected: "selected" }, "No")
                             ),
-                            '<a href="https://www.anz.co.nz/personal/home-loans-mortgages/loan-types/fixed/" target="_blank">Special interest rate</a> requires minimum 20% equity and an ANZ transaction account with salary direct credited'
+                            '<a href="https://www.anz.co.nz/personal/home-loans-mortgages/loan-types/fixed/" target="_blank">Special interest rate</a> applies to loan which has minimum 20% equity and salary direct credited.'
                         ),
                         fieldGroup(
                             "Disposable Balance (NZD)",
                             el("input", { type: "number", id: "c0", min: "0", step: "0.01", value: "0", required: "required" }),
-                            "Account bank balance that can be used to repay home loan."
+                            "Account bank balance that can be used to repay home loan. Do not include cashback in this amount."
                         ),
                         fieldGroup(
-                            "Current Monthly Disposable Income (NZD)",
-                            el("input", { type: "number", id: "s0", step: "0.01", required: "required" }),
-                            "Monthly surplus after tax, necessities, and living expenses. Can be negative if expenses exceed income."
+                            "Disposable Income (NZD)",
+                            el("div", { style: { display: "flex", gap: "0.5rem" } }, s0Input, s0Freq),
+                            "Surplus income after tax, necessities, and living expenses. Can be negative if expenses exceed income."
                         )
                     )
                 );
@@ -187,9 +231,9 @@
                         "div",
                         { class: "row" },
                         fieldGroup(
-                            "Prediction Horizon (months)",
-                            el("input", { type: "number", id: "T", min: "1", max: "600", step: "1", value: "60", required: "required" }),
-                            "How many months into the future the optimiser evaluates. Default 60 (5 years)."
+                            "Prediction Horizon (Years)",
+                            el("input", { type: "number", id: "T_years", min: "1", max: "10", step: "1", value: "5", required: "required" }),
+                            "How many years into the future the optimiser evaluates."
                         )
                     ),
                     el("h3", {}, "Future Income Changes"),
@@ -223,7 +267,7 @@
                     "div",
                     { class: "section" },
                     el("h2", {}, "3. Bank Policy"),
-                    sectionDesc("Settings that depend on your bank's terms and conditions. Check your loan agreement or ask your bank. Defaults are pre-filled for typical NZ bank policies.")
+                    sectionDesc("Settings that depend on your bank's terms and conditions. Defaults are pre-filled for typical NZ bank policies.")
                 );
 
                 const advBody = el(
@@ -248,9 +292,9 @@
                             "Each year, you can make extra repayments up to this percentage of the anniversary balance without penalty."
                         ),
                         fieldGroup(
-                            "Penalty-Free Payment Increase (NZD)",
-                            el("input", { type: "number", id: "beta", min: "0", step: "0.01", value: "1071", required: "required" }),
-                            "The most you can raise your regular payment by each anniversary year without triggering a fee."
+                            "Penalty-Free Payment Increase per Week (NZD)",
+                            el("input", { type: "number", id: "beta", min: "0", step: "0.01", value: "250", required: "required" }),
+                            "The most you can raise your weekly equivalent payment by each anniversary year. NZ banks commonly cap this at NZD 250 per week."
                         )
                     ),
                     el("h3", {}, "Cashback"),
@@ -263,9 +307,9 @@
                             "Percentage of your loan the bank pays you as a cash incentive at drawdown."
                         ),
                         fieldGroup(
-                            "Clawback Period (months)",
-                            el("input", { type: "number", id: "tau", min: "0", step: "1", value: "36", required: "required" }),
-                            "If you repay the entire loan within this many months, you must return some or all of the cashback."
+                            "Clawback Period (years)",
+                            el("input", { type: "number", id: "tau", min: "0", step: "1", value: "3", required: "required" }),
+                            "If you repay the entire loan within this many years, you must return some or all of the cashback."
                         ),
                         fieldGroup(
                             "Clawback Type",
@@ -301,12 +345,12 @@
                         fieldGroup(
                             "Bankruptcy Penalty Weight",
                             el("input", { type: "number", id: "Omega", min: "0", step: "1", value: "1000000", required: "required" }),
-                            "A very large cost applied when cash runs out, forcing the solver to avoid bankruptcy. Higher = stronger avoidance."
+                            "A very large cost applied when cash runs out. Higher = stronger avoidance."
                         ),
                         fieldGroup(
                             "Interest Decay Factor",
                             el("input", { type: "number", id: "zeta", min: "0.01", max: "0.99", step: "0.01", value: "0.55", required: "required" }),
-                            "Approximates how total interest shrinks as principal is repaid over time. Typically 0.55–0.60 for standard mortgages."
+                            "Approximates how total interest shrinks as principal is repaid over time. Typically 0.55–0.60."
                         )
                     )
                 );
@@ -324,35 +368,45 @@
                 );
             }
 
-            // ── Dynamic-list item builders (unchanged logic) ──────────
-
-            function removeBtn(listItem) {
-                return el(
-                    "button",
-                    { type: "button", class: "btn btn-del", onClick: () => listItem.remove() },
-                    "✕ Remove"
-                );
-            }
+            // ── Dynamic-list item builders ───────────────────────────
 
             function createSubloan(i, isFirst) {
+                const fSelect = el("select", {});
+                FIXED_TERM_OPTIONS.forEach((opt) => {
+                    fSelect.append(el("option", { value: String(opt.value) }, opt.label));
+                });
+
                 const refs = {
                     b: el("input", { type: "number", min: "0", step: "0.01", required: "required" }),
-                    m: el("input", { type: "number", min: "0", step: "1", required: "required" }),
-                    p0: el("input", { type: "number", min: "0", step: "0.01" }),
-                    contractYear: el("input", { type: "number", step: "1" }),
-                    contractMonth: monthSelect(null),
-                    f: el("input", { type: "number", min: "0", step: "1", value: "0" }),
-                    AL: el("input", { type: "number", min: "0", step: "0.01", value: "0", required: "required" }),
+                    loanStartDate: el("input", { type: "date", required: "required" }),
+                    term: el("input", { type: "number", min: "0.01", step: "any", required: "required", style: { width: "60%" } }),
+                    termUnit: el(
+                        "select",
+                        { style: { width: "40%" } },
+                        el("option", { value: "year", selected: "selected" }, "Years"),
+                        el("option", { value: "month" }, "Months"),
+                        el("option", { value: "fortnight" }, "Fortnights")
+                    ),
+                    p0: el("input", { type: "number", min: "0", step: "0.01", style: { width: "60%" } }),
+                    p0Freq: el(
+                        "select",
+                        { style: { width: "40%" } },
+                        el("option", { value: "weekly" }, "Weekly"),
+                        el("option", { value: "fortnightly", selected: "selected" }, "Fortnightly"),
+                        el("option", { value: "monthly" }, "Monthly")
+                    ),
+                    contractDate: el("input", { type: "date" }),
+                    f: fSelect,
+                    AL: el("input", { type: "number", min: "0", step: "0.01", value: "0" }),
                     AP: el(
                         "select",
-                        { required: "required" },
+                        {},
                         el("option", { value: "0" }, "No"),
                         el("option", { value: "1" }, "Yes")
                     ),
                     a: el("input", { type: "number", min: "0", step: "0.01" }),
                 };
 
-                refs.contractMonth.removeAttribute("required");
                 refs.b.addEventListener("input", updateTotalLoan);
 
                 const node = el(
@@ -363,19 +417,58 @@
                         "div",
                         { class: "row" },
                         fieldGroup(
-                            "Principal (NZD)", 
-                            refs.b, 
+                            "Principal (NZD)",
+                            refs.b,
                             "Outstanding balance of this loan part."
                         ),
                         fieldGroup(
-                            "Remaining Loan Term (months)", 
-                            refs.m, 
-                            "How many months until this part is scheduled to be fully repaid."
+                            "Loan Start Date",
+                            refs.loanStartDate,
+                            "The date when the loan was originally drawn."
                         ),
                         fieldGroup(
-                            "Current Regular Payment (NZD)", 
-                            refs.p0, 
-                            "Most recent monthly payment. Leave blank to let the program auto-calculate by floating interest rate.", 
+                            "Loan Term",
+                            el("div", { style: { display: "flex", gap: "0.5rem" } }, refs.term, refs.termUnit),
+                            "Total term to fully repay the loan, like 20 years or 30 years."
+                        ),
+                        fieldGroup(
+                            "Current Regular Payment",
+                            el("div", { style: { display: "flex", gap: "0.5rem" } }, refs.p0, refs.p0Freq),
+                            "Most recent payment. Leave blank to auto-calculate if floating.",
+                            false
+                        ),
+                        fieldGroup(
+                            "Interest Rate Type",
+                            refs.f,
+                            "Interest rate is floating or locked in fixed term."
+                        ),
+                    ),
+                    el("h3", {}, "Fixed term details"),
+                    el(
+                        "div",
+                        { class: "row" },
+                        fieldGroup(
+                            "Contract Start Date",
+                            refs.contractDate,
+                            "When you locked in the fixed rate.",
+                            false
+                        ),
+                        fieldGroup(
+                            "Extra Repayments Made This Year (NZD)",
+                            refs.AL,
+                            "Total lump-sum payments already made since the last contract anniversary.",
+                            false
+                        ),
+                        fieldGroup(
+                            "Payment Increase Already Used?",
+                            refs.AP,
+                            "Have you already raised the regular payment during the current anniversary year?",
+                            false
+                        ),
+                        fieldGroup(
+                            "Balance at Last Anniversary (NZD)",
+                            refs.a,
+                            "Leave blank to use current principal.",
                             false
                         )
                     )
@@ -387,53 +480,21 @@
                     );
                 }
 
-                const advBody = el(
-                    "div",
-                    { class: "adv-body" },
-                    el("p", { style: { fontSize: "1rem", color: "#64748b", marginBottom: ".5rem" } }, "Fill these in only if this loan part is currently locked into a fixed rate. For floating-rate or brand-new loans, leave as defaults."),
-                    el(
-                        "div",
-                        { class: "row" },
-                        ymField(
-                            "Contract Start Date", 
-                            refs.contractYear, refs.contractMonth, 
-                            "When you locked in the fixed rate. Used to look up the interbank swap rate for break fee calculation."
-                        ),
-                        fieldGroup(
-                            "Fixed Term Length (months)", 
-                            refs.f, 
-                            "Total length of the fixed-rate product (e.g. 12 for a 1-year fix), 0 if floating.", 
-                            false
-                        ),
-                        fieldGroup(
-                            "Extra Repayments Made This Year (NZD)", 
-                            refs.AL, 
-                            "Total lump-sum payments already made on this part since the last contract anniversary. Counts toward the penalty-free allowance."
-                        ),
-                        fieldGroup(
-                            "Payment Increase Already Used?", 
-                            refs.AP, 
-                            "Whether you have already raised the regular payment on this part during the current anniversary year (once per year is penalty-free)."
-                        ),
-                        fieldGroup(
-                            "Balance at Last Anniversary (NZD)", 
-                            refs.a, 
-                            "The principal balance when the current anniversary year began. The penalty-free lump-sum allowance is a percentage of this figure. Use current principal if the loan just started. Leave blank to use current principal.", 
-                            false
-                        )
-                    )
-                );
-
-                node.append(el("details", { class: "adv" }, el("summary", {}, "Advanced — Existing Fixed-Rate Contract"), advBody));
                 node.refs = refs;
                 return node;
             }
 
             function createSalaryChange(i) {
                 const refs = {
-                    year: el("input", { type: "number", step: "1", required: "required" }),
-                    month: monthSelect(null),
-                    val: el("input", { type: "number", step: "0.01", required: "required" }),
+                    date: el("input", { type: "date", required: "required" }),
+                    val: el("input", { type: "number", step: "0.01", required: "required", style: { width: "60%" } }),
+                    freq: el(
+                        "select",
+                        { style: { width: "40%" } },
+                        el("option", { value: "weekly" }, "Weekly"),
+                        el("option", { value: "fortnightly" }, "Fortnightly"),
+                        el("option", { value: "monthly", selected: "selected" }, "Monthly")
+                    )
                 };
 
                 const node = el(
@@ -443,8 +504,8 @@
                     el(
                         "div",
                         { class: "row" },
-                        ymField("When", refs.year, refs.month, "Year and month when the income changes."),
-                        fieldGroup("New Monthly Disposable Income (NZD)", refs.val, "The new amount each month from this point onward, until the next change.")
+                        fieldGroup("Effective From", refs.date, "Date the new income takes effect."),
+                        fieldGroup("New Disposable Income (NZD)", el("div", { style: { display: "flex", gap: "0.5rem" } }, refs.val, refs.freq), "Amount from this point onward.")
                     )
                 );
 
@@ -457,8 +518,7 @@
 
             function createOneOff(i) {
                 const refs = {
-                    year: el("input", { type: "number", step: "1", required: "required" }),
-                    month: monthSelect(null),
+                    date: el("input", { type: "date", required: "required" }),
                     val: el("input", { type: "number", min: "0", step: "0.01", required: "required" }),
                 };
 
@@ -469,7 +529,7 @@
                     el(
                         "div",
                         { class: "row" },
-                        ymField("When", refs.year, refs.month, "Year and month you expect to receive this income."),
+                        fieldGroup("Date Received", refs.date, "Date you expect to receive this income."),
                         fieldGroup("Amount (NZD)", refs.val, null)
                     )
                 );
@@ -533,34 +593,27 @@
                 if (slCount > maxN)
                     errors.push("You have " + slCount + " loan parts but Max Loan Parts is " + maxN + ".");
 
-                if (!document.getElementById("startYear").value || !document.getElementById("startMonth").value)
-                    errors.push("Please select a Prediction Start year and month.");
+                const startDate = strOrNull("startDate");
+                if (!startDate) errors.push("Please choose a Prediction Start Date.");
+
+                if (!strOrNull("d0"))
+                    errors.push("Please choose a First Repayment Date.");
 
                 document.querySelectorAll("#subloanList .list-item").forEach((item) => {
                     const r = item.refs;
                     const termLen = toIntOrNull(r.f.value);
-                    const cYear = toIntOrNull(r.contractYear.value);
-                    const cMonth = toIntOrNull(r.contractMonth.value);
+                    const cDate = r.contractDate.value || null;
+                    const lDate = r.loanStartDate.value || null;
 
-                    const hasTerm = termLen !== null && termLen > 0;
-                    const hasDate = cYear !== null && cMonth !== null && cYear > 0 && cMonth >= 1 && cMonth <= 12;
+                    const hasContractDate = isValidISODate(cDate);
+                    const hasLoanDate = isValidISODate(lDate);
 
-                    if (hasTerm && !hasDate)
-                        errors.push("A loan part has fixed term length set but contract start date is missing.");
-                    if (!hasTerm && hasDate)
-                        errors.push("A loan part has contract start date provided but fixed term length is 0.");
+                    if (hasContractDate && isValidISODate(startDate) && cDate > startDate)
+                        errors.push("A loan part has contract start date after the prediction start date.");
 
-                    if (hasDate) {
-                        const pYear = toIntOrNull(document.getElementById("startYear").value);
-                        const pMonth = toIntOrNull(document.getElementById("startMonth").value);
-                        if (pYear && pMonth) {
-                            const elapsed = (pYear - cYear) * 12 + (pMonth - cMonth);
-                            if (elapsed < 0)
-                                errors.push("A loan part has contract start date after the prediction start date.");
-                        }
-                    }
+                    if (hasLoanDate && hasContractDate && lDate > cDate)
+                        errors.push("A loan part has loan start date after its contract start date.");
                 });
-
                 return [...new Set(errors)];
             }
 
@@ -568,25 +621,32 @@
             function collectData() {
                 const num = (id) => toNumberOrNull(document.getElementById(id).value);
                 const int = (id) => toIntOrNull(document.getElementById(id).value);
+                const str = (id) => strOrNull(id);
+
+                const s0Amt = num("s0");
+                const s0Freq = document.getElementById("s0Freq").value;
+                const betaWeekly = num("beta");
+                const tauYears = num("tau");
+                const tYears = num("T_years");
 
                 const data = {
-                    prediction_start: { year: int("startYear"), month: int("startMonth") },
+                    prediction_start_date: str("startDate"),
                     revenue: {
-                        repayment_day: int("d"),
+                        fortnightly_repayment_anchor_date: str("d0"),
                         disposable_balance_nzd: num("c0"),
-                        monthly_disposable_income_nzd: num("s0"),
+                        fortnightly_disposable_income_nzd: freqToFortnightly(s0Amt, s0Freq),
                         lvr: document.getElementById("lvr").value === "true",
                         income_changes: [],
                         income_pulse: [],
-                        prediction_horizon_months: int("T"),
+                        prediction_horizon_fortnights: yearsToFortnights(tYears),
                     },
                     bank_policy: {
                         max_loan_parts: int("N"),
                         restructure_fee_nzd: num("phi"),
                         penalty_free_lumpsum_pct: num("alpha"),
-                        penalty_free_payment_increase_nzd: num("beta"),
+                        penalty_free_payment_increase_per_fortnight_nzd: weeklyToFortnightly(betaWeekly),
                         cashback_pct: num("gamma"),
-                        clawback_period_months: int("tau"),
+                        clawback_period_fortnights: yearsToFortnights(tauYears),
                         clawback_type: int("theta"),
                     },
                     solver_settings: {
@@ -598,18 +658,18 @@
 
                 document.querySelectorAll("#salaryChangesList .list-item").forEach((item) => {
                     const r = item.refs;
+                    const amt = toNumberOrNull(r.val.value);
+                    const freq = r.freq.value;
                     data.revenue.income_changes.push({
-                        year: toIntOrNull(r.year.value),
-                        month: toIntOrNull(r.month.value),
-                        new_income_nzd: toNumberOrNull(r.val.value),
+                        effective_date: r.date.value || null,
+                        new_fortnightly_income_nzd: freqToFortnightly(amt, freq),
                     });
                 });
 
                 document.querySelectorAll("#oneOffList .list-item").forEach((item) => {
                     const r = item.refs;
                     data.revenue.income_pulse.push({
-                        year: toIntOrNull(r.year.value),
-                        month: toIntOrNull(r.month.value),
+                        date: r.date.value || null,
                         amount_nzd: toNumberOrNull(r.val.value),
                     });
                 });
@@ -618,13 +678,28 @@
                     const r = item.refs;
                     const principal = toNumberOrNull(r.b.value);
                     const rawA = toNumberOrNull(r.a.value);
+                    const pAmt = toNumberOrNull(r.p0.value);
+                    const pFreq = r.p0Freq.value;
+
+                    const termVal = toNumberOrNull(r.term.value);
+                    const termUnit = r.termUnit.value;
+                    let loanTermFortnights = null;
+                    if (termVal !== null) {
+                        let raw;
+                        if (termUnit === "year") raw = termVal * FORTNIGHTS_PER_YEAR;
+                        else if (termUnit === "month") raw = termVal * FORTNIGHTS_PER_YEAR / MONTHS_PER_YEAR;
+                        else raw = termVal; // fortnight
+                        // Persist as integer fortnights regardless of input unit.
+                        loanTermFortnights = Math.round(raw);
+                    }
+
                     data.loan_parts.push({
                         principal_nzd: principal,
-                        remaining_term_months: toIntOrNull(r.m.value),
-                        current_payment_nzd: toNumberOrNull(r.p0.value),
-                        fixed_term_product_months: toIntOrNull(r.f.value),
-                        contract_start_year: toIntOrNull(r.contractYear.value),
-                        contract_start_month: toIntOrNull(r.contractMonth.value),
+                        loan_start_date: r.loanStartDate.value || null,
+                        loan_term_fortnights: loanTermFortnights,
+                        current_fortnightly_payment_nzd: freqToFortnightly(pAmt, pFreq),
+                        fixed_term_product_fortnights: toIntOrNull(r.f.value),
+                        contract_start_date: r.contractDate.value || null,
                         extra_repayments_this_year_nzd: toNumberOrNull(r.AL.value),
                         payment_increase_used: toIntOrNull(r.AP.value),
                         balance_at_last_anniversary_nzd: rawA === null ? principal : rawA,
@@ -696,39 +771,41 @@
 
                     const safeNum = (v) => (typeof v === "number" && isFinite(v) ? v : null);
                     const safeInt = (v) => { const n = safeNum(v); return n !== null && Number.isInteger(n) ? n : null; };
+                    const safeDate = (v) => (isValidISODate(v) ? v : null);
                     const setVal = (id, v) => { if (v !== null && v !== undefined) document.getElementById(id).value = v; };
 
-                    const ps = data.prediction_start;
-                    if (ps && typeof ps === "object") {
-                        const y = safeInt(ps.year), m = safeInt(ps.month);
-                        if (y) setVal("startYear", y);
-                        if (m && m >= 1 && m <= 12) setVal("startMonth", m);
-                    }
+                    const pStart = safeDate(data.prediction_start_date);
+                    if (pStart) setVal("startDate", pStart);
 
                     const uc = data.revenue;
                     if (uc && typeof uc === "object") {
-                        if (safeInt(uc.repayment_day) !== null) {
-                            const d = safeInt(uc.repayment_day);
-                            if (d >= 1 && d <= 31) setVal("d", d);
-                        }
+                        const anchor = safeDate(uc.fortnightly_repayment_anchor_date);
+                        if (anchor) setVal("d0", anchor);
                         if (safeNum(uc.disposable_balance_nzd) !== null) setVal("c0", safeNum(uc.disposable_balance_nzd));
-                        if (safeNum(uc.monthly_disposable_income_nzd) !== null) setVal("s0", safeNum(uc.monthly_disposable_income_nzd));
+                        
+                        if (safeNum(uc.fortnightly_disposable_income_nzd) !== null) {
+                            document.getElementById("s0Freq").value = "monthly";
+                            setVal("s0", fortnightlyToMonthly(safeNum(uc.fortnightly_disposable_income_nzd)).toFixed(2));
+                        }
+                        
                         if (typeof uc.lvr === "boolean") setVal("lvr", String(uc.lvr));
-                        if (safeInt(uc.prediction_horizon_months) !== null && safeInt(uc.prediction_horizon_months) >= 1)
-                            setVal("T", safeInt(uc.prediction_horizon_months));
+                        
+                        if (safeInt(uc.prediction_horizon_fortnights) !== null && safeInt(uc.prediction_horizon_fortnights) >= 1)
+                            setVal("T_years", Math.max(1, Math.round(fortnightsToYears(safeInt(uc.prediction_horizon_fortnights)))));
 
                         if (Array.isArray(uc.income_changes)) {
                             document.getElementById("salaryChangesList").innerHTML = "";
                             salaryIdx = 0;
                             uc.income_changes.forEach((ic) => {
                                 if (!ic || typeof ic !== "object") return;
-                                const yr = safeInt(ic.year), mo = safeInt(ic.month), val = safeNum(ic.new_income_nzd);
-                                if (!yr || !mo || mo < 1 || mo > 12 || val === null) return;
+                                const dt = safeDate(ic.effective_date);
+                                const valFortnightly = safeNum(ic.new_fortnightly_income_nzd);
+                                if (!dt || valFortnightly === null) return;
                                 addSalaryChange();
                                 const item = document.querySelector("#salaryChangesList .list-item:last-child");
-                                item.refs.year.value = yr;
-                                item.refs.month.value = mo;
-                                item.refs.val.value = val;
+                                item.refs.date.value = dt;
+                                item.refs.freq.value = "monthly";
+                                item.refs.val.value = fortnightlyToMonthly(valFortnightly).toFixed(2);
                             });
                         }
 
@@ -737,12 +814,12 @@
                             oneoffIdx = 0;
                             uc.income_pulse.forEach((oo) => {
                                 if (!oo || typeof oo !== "object") return;
-                                const yr = safeInt(oo.year), mo = safeInt(oo.month), val = safeNum(oo.amount_nzd);
-                                if (!yr || !mo || mo < 1 || mo > 12 || val === null || val < 0) return;
+                                const dt = safeDate(oo.date);
+                                const val = safeNum(oo.amount_nzd);
+                                if (!dt || val === null || val < 0) return;
                                 addOneOff();
                                 const item = document.querySelector("#oneOffList .list-item:last-child");
-                                item.refs.year.value = yr;
-                                item.refs.month.value = mo;
+                                item.refs.date.value = dt;
                                 item.refs.val.value = val;
                             });
                         }
@@ -753,9 +830,11 @@
                         if (safeInt(bp.max_loan_parts) !== null && safeInt(bp.max_loan_parts) >= 1) setVal("N", safeInt(bp.max_loan_parts));
                         if (safeNum(bp.restructure_fee_nzd) !== null) setVal("phi", safeNum(bp.restructure_fee_nzd));
                         if (safeNum(bp.penalty_free_lumpsum_pct) !== null) { const v = safeNum(bp.penalty_free_lumpsum_pct); if (v >= 0 && v <= 100) setVal("alpha", v); }
-                        if (safeNum(bp.penalty_free_payment_increase_nzd) !== null) setVal("beta", safeNum(bp.penalty_free_payment_increase_nzd));
+                        if (safeNum(bp.penalty_free_payment_increase_per_fortnight_nzd) !== null)
+                            setVal("beta", fortnightlyToWeekly(safeNum(bp.penalty_free_payment_increase_per_fortnight_nzd)).toFixed(2));
                         if (safeNum(bp.cashback_pct) !== null) { const v = safeNum(bp.cashback_pct); if (v >= 0 && v <= 100) setVal("gamma", v); }
-                        if (safeInt(bp.clawback_period_months) !== null) setVal("tau", safeInt(bp.clawback_period_months));
+                        if (safeInt(bp.clawback_period_fortnights) !== null)
+                            setVal("tau", Math.round(fortnightsToYears(safeInt(bp.clawback_period_fortnights))));
                         if (safeInt(bp.clawback_type) !== null && (bp.clawback_type === 0 || bp.clawback_type === 1)) setVal("theta", safeInt(bp.clawback_type));
                     }
 
@@ -770,20 +849,49 @@
                         subloanIdx = 0;
                         const maxNInput = toIntOrNull(document.getElementById("N").value);
                         const maxN = maxNInput === null ? 20 : maxNInput;
+                        const allowedFixedTerms = new Set(FIXED_TERM_OPTIONS.map((o) => o.value));
                         data.loan_parts.forEach((lp, idx) => {
                             if (!lp || typeof lp !== "object") return;
                             if (idx >= maxN) return;
                             if (safeNum(lp.principal_nzd) === null || safeNum(lp.principal_nzd) < 0) return;
-                            if (safeInt(lp.remaining_term_months) === null || safeInt(lp.remaining_term_months) < 0) return;
                             addSubloan();
                             const item = document.querySelector("#subloanList .list-item:last-child");
                             const r = item.refs;
                             r.b.value = safeNum(lp.principal_nzd);
-                            r.m.value = safeInt(lp.remaining_term_months);
-                            if (safeNum(lp.current_payment_nzd) !== null && safeNum(lp.current_payment_nzd) >= 0) r.p0.value = safeNum(lp.current_payment_nzd);
-                            if (safeInt(lp.fixed_term_product_months) !== null && safeInt(lp.fixed_term_product_months) > 0) r.f.value = safeInt(lp.fixed_term_product_months);
-                            if (safeInt(lp.contract_start_year) !== null) r.contractYear.value = safeInt(lp.contract_start_year);
-                            if (safeInt(lp.contract_start_month) !== null) r.contractMonth.value = safeInt(lp.contract_start_month);
+
+                            const lDate = safeDate(lp.loan_start_date);
+                            if (lDate) r.loanStartDate.value = lDate;
+
+                            const ltF = safeInt(lp.loan_term_fortnights);
+                            if (ltF !== null && ltF > 0) {
+                                // Pick the coarsest unit that round-trips exactly, default to years.
+                                if (ltF % FORTNIGHTS_PER_YEAR === 0) {
+                                    r.termUnit.value = "year";
+                                    r.term.value = ltF / FORTNIGHTS_PER_YEAR;
+                                } else if ((ltF * MONTHS_PER_YEAR) % FORTNIGHTS_PER_YEAR === 0) {
+                                    r.termUnit.value = "month";
+                                    r.term.value = (ltF * MONTHS_PER_YEAR) / FORTNIGHTS_PER_YEAR;
+                                } else {
+                                    r.termUnit.value = "fortnight";
+                                    r.term.value = ltF;
+                                }
+                            }
+
+                            if (safeNum(lp.current_fortnightly_payment_nzd) !== null && safeNum(lp.current_fortnightly_payment_nzd) >= 0) {
+                                r.p0Freq.value = "fortnightly";
+                                r.p0.value = safeNum(lp.current_fortnightly_payment_nzd).toFixed(2);
+                            }
+
+                            const ft = safeInt(lp.fixed_term_product_fortnights);
+                            if (ft !== null && allowedFixedTerms.has(ft)) {
+                                r.f.value = String(ft);
+                                r.f.dispatchEvent(new Event("change"));
+                            } else {
+                                r.f.value = "0";
+                                r.f.dispatchEvent(new Event("change"));
+                            }
+                            const cDate = safeDate(lp.contract_start_date);
+                            if (cDate) r.contractDate.value = cDate;
                             if (safeNum(lp.extra_repayments_this_year_nzd) !== null) r.AL.value = safeNum(lp.extra_repayments_this_year_nzd);
                             if (safeInt(lp.payment_increase_used) !== null && (lp.payment_increase_used === 0 || lp.payment_increase_used === 1)) r.AP.value = safeInt(lp.payment_increase_used);
                             if (safeNum(lp.balance_at_last_anniversary_nzd) !== null && safeNum(lp.balance_at_last_anniversary_nzd) >= 0 && safeNum(lp.balance_at_last_anniversary_nzd) !== safeNum(lp.principal_nzd)) r.a.value = safeNum(lp.balance_at_last_anniversary_nzd);
@@ -808,9 +916,6 @@
                 salaryIdx = 0;
                 oneoffIdx = 0;
                 addSubloan();
-                const now = new Date();
-                document.getElementById("startYear").value = now.getFullYear();
-                document.getElementById("startMonth").value = now.getMonth() + 1;
             }
 
             // ── Init ──────────────────────────────────────────────────
@@ -825,9 +930,6 @@
                 );
 
                 addSubloan();
-                const now = new Date();
-                document.getElementById("startYear").value = now.getFullYear();
-                document.getElementById("startMonth").value = now.getMonth() + 1;
             });
         </script>
     </body>
